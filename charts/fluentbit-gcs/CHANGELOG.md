@@ -11,7 +11,7 @@ First public release on Artifact Hub.
 - `--dry-run` guidance in replay section
 
 ### Changed
-- Chart name changed from `byoc-fluentbit` to `fluentbit` to match multi-chart repo convention
+- Chart name changed from `byoc-fluentbit` to `fluentbit-gcs` to match multi-chart repo convention
 - Source URL updated to `github.com/speedscale/speedscale-byoc`
 
 ### Notes

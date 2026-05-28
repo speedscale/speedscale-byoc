@@ -4,13 +4,14 @@ Reference architecture Helm charts for Speedscale BYOC (Bring Your Own Cloud) �
 
 ## Scenarios
 
-| Chart | Stack | Use when |
+| Chart | Stack | Best for |
 |---|---|---|
-| [`charts/grafana/`](charts/grafana/) | OTel Collector → Loki → Grafana | You want a live query + dashboard UI |
-| [`charts/elasticsearch/`](charts/elasticsearch/) | OTel Collector → Elasticsearch → Kibana | You want full-text search + Kibana Discover |
-| [`charts/fluentbit/`](charts/fluentbit/) | OTel Collector → Fluent Bit → GCS | You want durable object-storage archive + BigQuery |
+| [`charts/grafana/`](charts/grafana/) | OTel Collector → Loki → Grafana | Live dashboard + LogQL queries |
+| [`charts/elasticsearch/`](charts/elasticsearch/) | OTel Collector → Elasticsearch → Kibana | Full-text search + Kibana Discover |
+| [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | OTel Collector → Fluent Bit → GCS | Durable GCS archive + BigQuery |
+| [`charts/fluentbit-s3/`](charts/fluentbit-s3/) | OTel Collector → Fluent Bit → S3 | Durable S3 archive + Athena |
 
-All three coexist in separate namespaces on the same cluster. Flip the Forwarder's `byoc_otel.otel_endpoint` to switch which backend receives traffic.
+All scenarios coexist in separate namespaces on the same cluster. Flip the Forwarder's `byoc_otel.otel_endpoint` to switch which backend receives traffic.
 
 ## Quick start
 
@@ -40,29 +41,44 @@ speedscale-byoc/
 ├── charts/
 │   ├── grafana/          # Loki + Grafana + OTel Collector + Prometheus
 │   ├── elasticsearch/    # Elasticsearch + Kibana + OTel Collector
-│   └── fluentbit/        # OTel Collector + Fluent Bit → GCS
+│   ├── fluentbit-gcs/    # OTel Collector + Fluent Bit → Google Cloud Storage
+│   └── fluentbit-s3/     # OTel Collector + Fluent Bit → Amazon S3
 └── scripts/
     ├── loki-gather.py    # Pull RRPairs from Loki → proxymock snapshot
-    ├── es-gather.py      # Pull RRPairs from ES → proxymock snapshot
-    └── gcs-gather.py     # Pull RRPairs from GCS → proxymock snapshot
+    ├── es-gather.py      # Pull RRPairs from Elasticsearch → proxymock snapshot
+    ├── gcs-gather.py     # Pull RRPairs from GCS → proxymock snapshot
+    └── s3-gather.py      # Pull RRPairs from S3 → proxymock snapshot
 ```
 
 ## Replay captured traffic with proxymock
 
-Each scenario ships a companion `scripts/<backend>-gather.py` script that queries any subset of your captured traffic and writes a [`proxymock`](https://docs.speedscale.com/proxymock/)-replayable directory. See [`scripts/README.md`](scripts/README.md) for usage.
+Each scenario ships a companion `scripts/<backend>-gather.py` that queries a time window of captured traffic and writes a [`proxymock`](https://docs.speedscale.com/proxymock/)-replayable directory:
 
 ```bash
+# Grafana scenario
 python3 scripts/loki-gather.py \
-  --loki-url http://<node-ip>:30031 \
-  --service my-service --status 2.. --start -1h \
+  --loki-url http://<node-ip>:30031 --service my-service --start -1h \
+  --out-dir /tmp/snapshot
+
+# Elasticsearch scenario
+python3 scripts/es-gather.py \
+  --es-url http://<node-ip>:30032 --service my-service --start -1h \
+  --out-dir /tmp/snapshot
+
+# GCS scenario
+python3 scripts/gcs-gather.py \
+  --bucket my-rrpair-archive --service my-service --start -1h \
+  --out-dir /tmp/snapshot
+
+# S3 scenario
+python3 scripts/s3-gather.py \
+  --bucket my-rrpair-archive --region us-east-1 --service my-service --start -1h \
   --out-dir /tmp/snapshot
 
 proxymock mock --in /tmp/snapshot
 ```
 
-## Operator values
-
-Each chart ships example Speedscale Operator values under `examples/operator-values.yaml` that wire the Forwarder's `byoc_otel` exporter to the chart's OTel Collector endpoint.
+See [`scripts/README.md`](scripts/README.md) for all filter flags.
 
 ## License
 
