@@ -1,0 +1,41 @@
+name: Lint Charts
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - ".github/workflows/lint.yml"
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    continue-on-error: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint charts
+        run: |
+          helm lint charts/grafana
+          helm lint charts/elasticsearch
+          if [ -d charts/fluentbit-gcs ]; then helm lint charts/fluentbit-gcs; fi
+          if [ -d charts/fluentbit-s3  ]; then helm lint charts/fluentbit-s3;  fi
+
+      - name: Template charts (verify render)
+        run: |
+          helm template test charts/grafana > /dev/null
+          helm template test charts/elasticsearch > /dev/null
+          if [ -d charts/fluentbit-gcs ]; then helm template test charts/fluentbit-gcs > /dev/null; fi
+          if [ -d charts/fluentbit-s3  ]; then helm template test charts/fluentbit-s3  > /dev/null; fi
+
+      - name: Strict lint charts
+        run: |
+          helm lint --strict charts/grafana
+          helm lint --strict charts/elasticsearch
+          if [ -d charts/fluentbit-gcs ]; then helm lint --strict charts/fluentbit-gcs; fi
+          if [ -d charts/fluentbit-s3  ]; then helm lint --strict charts/fluentbit-s3;  fi
