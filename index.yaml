@@ -1,1 +1,115 @@
-
+apiVersion: v1
+entries:
+  elasticsearch:
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-05-28T06:32:05.111285-04:00"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Elasticsearch
+      → Kibana. Single-node demo stack sized for minikube. Pairs with the Speedscale
+      Operator chart (installed separately into the `speedscale` namespace); this
+      chart installs only the backend that receives RRPair logs from the Forwarder''s
+      byoc_otel exporter. '
+    digest: 31ae1f207bc1b8e38bcd94b327e92c3ace667b69d1ebdb19546c4d00cd15a6e5
+    keywords:
+    - speedscale
+    - byoc
+    - elasticsearch
+    - kibana
+    - opentelemetry
+    name: elasticsearch
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/elasticsearch
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/elasticsearch-1.0.0/elasticsearch-1.0.0.tgz
+    version: 1.0.0
+  fluentbit-gcs:
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-05-28T06:32:05.11149-04:00"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Fluent
+      Bit → Google Cloud Storage. Fluent Bit acts as the gateway / buffer / shipper,
+      batching RRPair logs into NDJSON objects written to a GCS bucket via the GCS
+      XML (S3-compatible) API. Pairs with the Speedscale Operator chart (installed
+      separately into the `speedscale` namespace); this chart installs only the in-cluster
+      pipeline that receives RRPairs from the Forwarder''s byoc_otel exporter and
+      ships them to long-term object storage. '
+    digest: 555870d74acb3c4733f93db14a0706184956392bce22e2b724126ea3482ce5fd
+    keywords:
+    - speedscale
+    - byoc
+    - gcs
+    - google-cloud-storage
+    - opentelemetry
+    - fluentbit
+    - archive
+    - data-lake
+    name: fluentbit-gcs
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/fluentbit-gcs
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-gcs-1.0.0/fluentbit-gcs-1.0.0.tgz
+    version: 1.0.0
+  fluentbit-s3:
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-05-28T06:32:05.111654-04:00"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Fluent
+      Bit → Amazon S3. Supports both static IAM credentials (Secret) and EKS IRSA
+      (no credentials in cluster). Hive-partitioned gzipped NDJSON objects compatible
+      with Athena/Glue external tables. Pairs with the Speedscale Operator chart (installed
+      separately into the `speedscale` namespace). '
+    digest: ef4b9df4c762062505281ae415314f3d3d8c7adc90cdc80f06317fd3d6b34174
+    keywords:
+    - speedscale
+    - byoc
+    - s3
+    - aws
+    - opentelemetry
+    - fluentbit
+    - archive
+    - data-lake
+    name: fluentbit-s3
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/fluentbit-s3
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-s3-1.0.0/fluentbit-s3-1.0.0.tgz
+    version: 1.0.0
+  grafana:
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-05-28T06:32:05.111905-04:00"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Loki →
+      Grafana. Single-node demo stack sized for minikube. Pairs with the Speedscale
+      Operator chart (installed separately into the `speedscale` namespace); this
+      chart installs only the backend that receives RRPair logs from the Forwarder''s
+      byoc_otel exporter. '
+    digest: a2679cc9870fa52e85214bf3e12f2d63651ceb2f0ec1497ddd1b14c387e649ac
+    keywords:
+    - speedscale
+    - byoc
+    - loki
+    - grafana
+    - opentelemetry
+    name: grafana
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/grafana
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/grafana-1.0.0/grafana-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-05-28T06:32:05.110651-04:00"
