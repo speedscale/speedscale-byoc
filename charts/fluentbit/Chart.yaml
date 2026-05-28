@@ -8,8 +8,8 @@ description: |
   only the in-cluster pipeline that receives RRPairs from the Forwarder's byoc_otel exporter
   and ships them to long-term object storage.
 type: application
-version: 0.2.0
-appVersion: "0.2.0"
+version: 1.0.0
+appVersion: "1.0.0"
 keywords:
   - speedscale
   - byoc
