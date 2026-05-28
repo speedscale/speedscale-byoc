@@ -1,0 +1,18 @@
+# Helm
+*.tgz
+charts/*.tgz
+.helm/
+
+# chart-releaser
+.cr-release-packages/
+.cr-index/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,115 @@
+# Speedscale BYOC: Grafana + Loki
+
+This reference architecture captures real traffic from your apps, ships it through the Speedscale Forwarder to your own Loki, and lets you slice it through Grafana — then pull any subset back out as a `proxymock`-replayable directory for tests.
+
+## Architecture
+
+**Capture.** The Forwarder's `byoc_otel` exporter ships RRPairs as OTLP logs into your own Loki — no Speedscale Cloud round-trip. Grafana sits on top for indexing, dashboards, and ad-hoc queries.
+
+```mermaid
+flowchart LR
+    apps([Your apps]) --> fwd[Speedscale Forwarder]
+    fwd --> col[OTel Collector]
+    col --> loki[(Loki)]
+    loki --> grafana[Grafana]
+```
+
+**Replay.** `loki-gather.py` queries any subset of Loki back out and writes a `proxymock`-readable directory. Same real traffic you captured drives your tests.
+
+```mermaid
+flowchart LR
+    loki[(Loki)] --> gather[loki-gather.py]
+    gather --> snap[(Snapshot dir)]
+    snap --> pm[proxymock]
+    pm <--> test([App under test])
+```
+
+## Prerequisites
+
+- A Kubernetes cluster (any flavor — `kind`, `minikube`, EKS, GKE, AKS, k3s)
+- `kubectl` configured against it
+- `helm` v3
+- A Speedscale API key (`SPEEDSCALE_API_KEY`) and your app URL
+
+## Install
+
+Two helm releases: the upstream Speedscale Operator chart (which installs the Forwarder + Nettap into the `speedscale` namespace) and this chart (which installs the BYOC backend — Loki, Grafana, OTel Collector, Prometheus — into `byoc-grafana`).
+
+```bash
+helm repo add speedscale https://speedscale.github.io/operator-helm/
+helm repo add speedscale-byoc https://speedscale.github.io/speedscale-byoc/
+helm repo update
+
+kubectl -n speedscale create secret generic speedscale-airgapped-apikey \
+  --from-literal=SPEEDSCALE_API_KEY="<YOUR_API_KEY>" \
+  --from-literal=SPEEDSCALE_APP_URL="app.speedscale.com"
+
+# 1. Speedscale Operator + Forwarder (sends RRPair logs via OTLP)
+helm upgrade --install speedscale-operator speedscale/speedscale-operator \
+  -n speedscale --create-namespace \
+  -f examples/operator-values.yaml
+
+# 2. BYOC backend (receives + indexes + visualizes the RRPair logs)
+helm upgrade --install byoc-grafana speedscale-byoc/grafana \
+  -n byoc-grafana --create-namespace
+
+kubectl -n speedscale get pods
+kubectl -n byoc-grafana get pods
+```
+
+The `values.yaml` file documents every overridable knob (NodePorts, PVC sizes, retention, image versions, Grafana admin credentials). To customize:
+
+```bash
+helm upgrade --install byoc-grafana speedscale-byoc/grafana -n byoc-grafana --create-namespace \
+  --set grafana.adminPassword=hunter2 \
+  --set storage.loki=20Gi \
+  --set retention.loki=72h
+```
+
+To inspect the rendered manifests before installing: `helm template byoc-grafana speedscale-byoc/grafana -n byoc-grafana`.
+
+## Index + Visualize
+
+- Indexing: Loki stores logs and indexed labels.
+- Visualization: Grafana Explore and dashboards.
+
+Grafana and Loki are both `Service: NodePort` (30030 and 30031 respectively) so you don't need a `kubectl port-forward` process babysitting your dev loop. Reach them via the node IP:
+
+```bash
+NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+# or: minikube ip
+
+open "http://${NODE_IP}:30030"   # Grafana (admin/admin)
+curl "http://${NODE_IP}:30031/ready"   # Loki
+```
+
+In Grafana Explore, query `{cluster=~".+"}` (or scope to a specific service: `{cluster=~".+", service="java-server"}`). Two dashboards are auto-provisioned under the **Speedscale BYOC** folder:
+
+- **Speedscale BYOC** — infra view (forwarder metrics, queue depths, structured RRPair log stream)
+- **Speedscale Traffic** — RRPair traffic explorer (filter by service / method / status / endpoint regex; one-line-per-request format; expand any row for the full JSON with req/res bodies)
+
+> **`minikube --driver=docker` on macOS:** the node IP `192.168.49.2` lives inside Docker Desktop's hidden VM and isn't routable from your host. Either flip on Docker Desktop's "host networking" (Settings → Resources → Network), switch to a driver where the VM IP routes natively (OrbStack, vfkit, hyperkit), or run a `socat` container to bridge each port:
+> ```bash
+> kubectl -n byoc-grafana run grafana-bridge --image=alpine/socat \
+>   --restart=Never -- TCP-LISTEN:30030,fork TCP:localhost:30030
+> ```
+
+## Replay (gather a subset of traffic into proxymock)
+
+Once Loki has some real traffic, you can pull any slice of it out as a directory `proxymock` reads:
+
+```bash
+NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+
+python3 scripts/loki-gather.py \
+  --loki-url http://${NODE_IP}:30031 \
+  --service  java-server \
+  --status   2.. \
+  --endpoint '^/spacex/.+' \
+  --start    -15m \
+  --out-dir  /tmp/spacex-snapshot
+
+proxymock mock --in /tmp/spacex-snapshot
+```
+
+The gathered directory is the same shape `speedctl proxymock cloud pull snapshot` produces after expanding a cloud snapshot — so anything in the proxymock ecosystem that reads a recording works without changes. See `scripts/loki-gather.py --help` for all filter flags.
