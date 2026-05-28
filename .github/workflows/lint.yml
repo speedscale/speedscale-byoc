@@ -11,6 +11,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     continue-on-error: false
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
