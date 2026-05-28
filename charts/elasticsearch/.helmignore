@@ -1,0 +1,15 @@
+# Patterns to ignore when building packages.
+# This follows the same rules as .gitignore.
+
+# Don't bundle examples or changelog — they're for GitHub/docs browsing only.
+examples/
+CHANGELOG.md
+
+# files/ contains Kibana dashboard NDJSON that IS intentionally bundled for
+# the dashboard provisioning Job. Do NOT add files/ here.
+
+# OS and editor noise
+.DS_Store
+.idea/
+*.swp
+*.swo
