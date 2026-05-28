@@ -1,0 +1,164 @@
+{{/*
+  Fluent Bit — OTLP → Amazon S3 shipper.
+
+  Pipeline:
+    OTel Collector  --OTLP/HTTP:4318-->  Fluent Bit  --PutObject/Multipart-->  s3://<bucket>
+
+  Auth:
+    Option A (static credentials): create a Secret with accessKeyId + secretAccessKey,
+      set s3.credentialsSecret to its name. Works on any cluster.
+
+    Option B (IRSA — EKS only): set irsa.enabled=true, irsa.roleArn to an IAM role
+      that has s3:PutObject on the bucket, leave s3.credentialsSecret="".
+      The chart creates a ServiceAccount annotated with the role ARN; no credentials
+      live in the cluster.
+
+  Object layout:
+    Hive-partitioned gzipped NDJSON. One OTLP LogRecord per line.
+    Compatible with Athena / Glue external tables.
+
+  Version requirement:
+    Fluent Bit >= 4.0.3. FB 3.1.x's opentelemetry input collapses an entire
+    ResourceLogs batch into one record and discards individual LogRecords.
+*/}}
+{{- if and .Values.irsa.enabled .Values.irsa.roleArn }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.irsa.serviceAccountName }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    eks.amazonaws.com/role-arn: {{ .Values.irsa.roleArn }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-config
+  namespace: {{ .Release.Namespace }}
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush         1
+        Daemon        Off
+        Log_Level     info
+        HTTP_Server   On
+        HTTP_Listen   0.0.0.0
+        HTTP_Port     2020
+
+    [INPUT]
+        Name          opentelemetry
+        Listen        0.0.0.0
+        Port          4318
+        Tag           speedscale.otel
+
+    [OUTPUT]
+        Name                       s3
+        Match                      *
+        bucket                     {{ .Values.s3.bucket }}
+        region                     {{ .Values.s3.region }}
+        s3_key_format              {{ .Values.s3.keyFormat }}
+        json_date_key              @timestamp
+        json_date_format           iso8601
+        total_file_size            {{ .Values.s3.totalFileSize }}
+        upload_timeout             {{ .Values.s3.uploadTimeout }}
+        {{- if eq .Values.s3.compression "gzip" }}
+        compression                gzip
+        {{- end }}
+        store_dir                  /var/fluent-bit/buffer
+        preserve_data_ordering     On
+        retry_limit                5
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fluent-bit
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fluent-bit
+  template:
+    metadata:
+      labels:
+        app: fluent-bit
+    spec:
+      {{- if and .Values.irsa.enabled .Values.irsa.roleArn }}
+      serviceAccountName: {{ .Values.irsa.serviceAccountName }}
+      {{- end }}
+      containers:
+        - name: fluent-bit
+          image: {{ .Values.image.fluentBit }}
+          args:
+            - -c
+            - /fluent-bit/etc/fluent-bit.conf
+          ports:
+            - containerPort: 4318
+              name: otlp-http
+            - containerPort: 2020
+              name: metrics
+          {{- if and (not .Values.irsa.enabled) .Values.s3.credentialsSecret }}
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.s3.credentialsSecret }}
+                  key: accessKeyId
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.s3.credentialsSecret }}
+                  key: secretAccessKey
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 2020
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 2020
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          volumeMounts:
+            - name: config
+              mountPath: /fluent-bit/etc/fluent-bit.conf
+              subPath: fluent-bit.conf
+            - name: buffer
+              mountPath: /var/fluent-bit/buffer
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: fluent-bit-config
+        - name: buffer
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fluent-bit
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: fluent-bit
+  ports:
+    - name: otlp-http
+      protocol: TCP
+      port: 4318
+      targetPort: 4318
+    - name: metrics
+      protocol: TCP
+      port: 2020
+      targetPort: 2020

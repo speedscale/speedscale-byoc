@@ -1,0 +1,28 @@
+s3:
+  # S3 bucket name (required)
+  bucket: my-rrpair-archive
+  # AWS region where the bucket lives
+  region: us-east-1
+  # Hive-partitioned key format for Athena/Glue compatibility
+  keyFormat: /year=%Y/month=%m/day=%d/hour=%H/$UUID-$INDEX.json.gz
+  # Kubernetes Secret with accessKeyId + secretAccessKey. Set to "" for IRSA.
+  credentialsSecret: byoc-fluentbit-s3
+  # Flush to S3 when batch reaches this size
+  totalFileSize: 5M
+  # Flush to S3 after this time even if batch is smaller
+  uploadTimeout: 30s
+  # Output compression: gzip or none
+  compression: gzip
+
+irsa:
+  # Enable IRSA (EKS only) — creates an annotated ServiceAccount
+  enabled: false
+  # IAM role ARN for IRSA. Required when irsa.enabled=true.
+  roleArn: ""
+  # Name of the ServiceAccount created when IRSA is enabled
+  serviceAccountName: byoc-fluentbit-s3
+
+image:
+  otelCollector: otel/opentelemetry-collector-contrib:0.108.0
+  # Must be >= 4.0.3. FB 3.1.x collapses OTLP ResourceLogs batches.
+  fluentBit: cr.fluentbit.io/fluent/fluent-bit:4.0.3
