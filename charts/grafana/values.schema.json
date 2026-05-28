@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Speedscale BYOC Grafana chart values",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "nodePort": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "grafana": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 32767,
+          "description": "NodePort for the Grafana UI"
+        },
+        "loki": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 32767,
+          "description": "NodePort for the Loki API (used by loki-gather.py)"
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "loki": {
+          "type": "string",
+          "pattern": "^[0-9]+(Ki|Mi|Gi|Ti)$",
+          "description": "PVC size for Loki (e.g. 5Gi)"
+        },
+        "grafana": {
+          "type": "string",
+          "pattern": "^[0-9]+(Ki|Mi|Gi|Ti)$",
+          "description": "PVC size for Grafana (e.g. 2Gi)"
+        }
+      }
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "loki": {
+          "type": "string",
+          "description": "Loki retention period (e.g. 24h, 168h)"
+        },
+        "prometheus": {
+          "type": "string",
+          "description": "Prometheus retention period (e.g. 24h)"
+        }
+      }
+    },
+    "grafana": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adminUser": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Grafana admin username"
+        },
+        "adminPassword": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Grafana admin password — change from default for any non-demo environment"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "loki":          { "type": "string", "minLength": 1 },
+        "grafana":       { "type": "string", "minLength": 1 },
+        "prometheus":    { "type": "string", "minLength": 1 },
+        "otelCollector": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

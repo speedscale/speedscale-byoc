@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Speedscale BYOC Fluent Bit → GCS chart values",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gcs"],
+  "properties": {
+    "gcs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket", "region"],
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GCS bucket name (required) — must exist before installing"
+        },
+        "region": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GCS region (e.g. us-central1)"
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "description": "GCS XML/Interop endpoint URL"
+        },
+        "credentialsSecret": {
+          "type": "string",
+          "description": "K8s Secret name holding HMAC accessKeyId + secretAccessKey"
+        },
+        "keyFormat": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Fluent Bit s3 key format template (strftime + FB vars)"
+        },
+        "totalFileSize": {
+          "type": "string",
+          "pattern": "^[0-9]+(K|M|G)$",
+          "description": "Flush to GCS when batch reaches this size (e.g. 5M)"
+        },
+        "uploadTimeout": {
+          "type": "string",
+          "description": "Flush to GCS after this time even if batch is smaller (e.g. 30s)"
+        },
+        "compression": {
+          "type": "string",
+          "enum": ["gzip", "none"],
+          "description": "Output compression"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "otelCollector": { "type": "string", "minLength": 1 },
+        "fluentBit":     { "type": "string", "minLength": 1, "description": "Must be >= 4.0.3" }
+      }
+    }
+  }
+}
