@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Speedscale BYOC Fluent Bit → S3 chart values",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["s3"],
+  "properties": {
+    "s3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket", "region"],
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "minLength": 1,
+          "description": "S3 bucket name (required) — must exist before installing"
+        },
+        "region": {
+          "type": "string",
+          "minLength": 1,
+          "description": "AWS region where the bucket lives (e.g. us-east-1)"
+        },
+        "keyFormat": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Fluent Bit s3 key format template (strftime + FB vars)"
+        },
+        "credentialsSecret": {
+          "type": "string",
+          "description": "K8s Secret name with accessKeyId + secretAccessKey. Set to empty string for IRSA."
+        },
+        "totalFileSize": {
+          "type": "string",
+          "pattern": "^[0-9]+(K|M|G)$",
+          "description": "Flush to S3 when batch reaches this size (e.g. 5M)"
+        },
+        "uploadTimeout": {
+          "type": "string",
+          "description": "Flush to S3 after this time even if batch is smaller (e.g. 30s)"
+        },
+        "compression": {
+          "type": "string",
+          "enum": ["gzip", "none"],
+          "description": "Output compression"
+        }
+      }
+    },
+    "irsa": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable IRSA (EKS only). When true, roleArn is required."
+        },
+        "roleArn": {
+          "type": "string",
+          "pattern": "^(arn:aws:iam::[0-9]{12}:role/.+)?$",
+          "description": "IAM role ARN for IRSA (e.g. arn:aws:iam::123456789012:role/my-role)"
+        },
+        "serviceAccountName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the ServiceAccount created when IRSA is enabled"
+        }
+      },
+      "if": {
+        "properties": { "enabled": { "const": true } }
+      },
+      "then": {
+        "required": ["roleArn"],
+        "properties": {
+          "roleArn": {
+            "minLength": 1,
+            "description": "Required when irsa.enabled=true"
+          }
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "otelCollector": { "type": "string", "minLength": 1 },
+        "fluentBit":     { "type": "string", "minLength": 1, "description": "Must be >= 4.0.3" }
+      }
+    }
+  }
+}

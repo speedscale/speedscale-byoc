@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Speedscale BYOC Elasticsearch chart values",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "nodePort": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "elasticsearch": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 32767,
+          "description": "NodePort for the Elasticsearch HTTP API"
+        },
+        "kibana": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 32767,
+          "description": "NodePort for the Kibana UI"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "elasticsearch": { "type": "string", "minLength": 1 },
+        "kibana":        { "type": "string", "minLength": 1 },
+        "otelCollector": { "type": "string", "minLength": 1 }
+      }
+    },
+    "elasticsearch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "javaOpts": {
+          "type": "string",
+          "description": "JVM heap options for Elasticsearch (e.g. -Xms512m -Xmx512m)"
+        }
+      }
+    },
+    "logsIndex": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Elasticsearch index name for RRPair logs"
+    }
+  }
+}
