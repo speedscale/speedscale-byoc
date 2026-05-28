@@ -33,83 +33,163 @@ flowchart LR
 
 ## Install
 
-Two helm releases: the upstream Speedscale Operator chart (which installs the Forwarder + Nettap into the `speedscale` namespace) and this chart (which installs the BYOC backend — Loki, Grafana, OTel Collector, Prometheus — into `byoc-grafana`).
-
 ```bash
 helm repo add speedscale https://speedscale.github.io/operator-helm/
 helm repo add speedscale-byoc https://speedscale.github.io/speedscale-byoc/
 helm repo update
 
-kubectl -n speedscale create secret generic speedscale-airgapped-apikey \
+# Create the API key secret
+kubectl create namespace speedscale
+kubectl -n speedscale create secret generic speedscale-apikey \
   --from-literal=SPEEDSCALE_API_KEY="<YOUR_API_KEY>" \
   --from-literal=SPEEDSCALE_APP_URL="app.speedscale.com"
 
-# 1. Speedscale Operator + Forwarder (sends RRPair logs via OTLP)
+# 1. Speedscale Operator + Forwarder, wired to this chart's OTel Collector
 helm upgrade --install speedscale-operator speedscale/speedscale-operator \
   -n speedscale --create-namespace \
-  -f examples/operator-values.yaml
+  --set apiKeySecret=speedscale-apikey \
+  --set clusterName=<YOUR_CLUSTER_NAME> \
+  --set 'forwarder.exporters.byoc_otel.otel_endpoint=http://otel-collector.byoc-grafana.svc.cluster.local:4317' \
+  --set 'forwarder.exporters.byoc_otel.filter_rule=standard' \
+  --set 'forwarder.exporters.byoc_otel.dlp_config_id=standard'
 
-# 2. BYOC backend (receives + indexes + visualizes the RRPair logs)
+# 2. BYOC backend (Loki + Grafana + OTel Collector + Prometheus)
 helm upgrade --install byoc-grafana speedscale-byoc/grafana \
   -n byoc-grafana --create-namespace
-
-kubectl -n speedscale get pods
-kubectl -n byoc-grafana get pods
 ```
 
-The `values.yaml` file documents every overridable knob (NodePorts, PVC sizes, retention, image versions, Grafana admin credentials). To customize:
+Annotate a workload to capture its traffic:
 
 ```bash
-helm upgrade --install byoc-grafana speedscale-byoc/grafana -n byoc-grafana --create-namespace \
-  --set grafana.adminPassword=hunter2 \
-  --set storage.loki=20Gi \
-  --set retention.loki=72h
+kubectl patch deployment my-app -p '{"spec":{"template":{"metadata":{"annotations":{"capture.speedscale.com/enabled":"true"}}}}}'
 ```
 
-To inspect the rendered manifests before installing: `helm template byoc-grafana speedscale-byoc/grafana -n byoc-grafana`.
+## Verify
 
-## Index + Visualize
+Run these checks in order to confirm every hop is working.
 
-- Indexing: Loki stores logs and indexed labels.
-- Visualization: Grafana Explore and dashboards.
+**1. Forwarder is wired**
 
-Grafana and Loki are both `Service: NodePort` (30030 and 30031 respectively) so you don't need a `kubectl port-forward` process babysitting your dev loop. Reach them via the node IP:
+```bash
+kubectl -n speedscale get cm speedscale-forwarder \
+  -o jsonpath='{.data.EXPORTERS}' | jq .
+```
+
+Expected output contains `byoc_otel` with your endpoint. If `EXPORTERS` is `null` or missing `byoc_otel`, the Operator values weren't applied — recheck step 1 of the install.
+
+**2. OTel Collector is receiving logs**
+
+```bash
+kubectl -n byoc-grafana logs deploy/otel-collector --tail=50 | grep -E 'LogsExporter|otelcol'
+```
+
+Look for lines like `"otelcol/logsexporter"` with non-zero `log_records`. Silence here means the Forwarder isn't reaching the Collector — check the endpoint and port.
+
+**3. Loki is ready and receiving data**
 
 ```bash
 NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
-# or: minikube ip
 
-open "http://${NODE_IP}:30030"   # Grafana (admin/admin)
-curl "http://${NODE_IP}:30031/ready"   # Loki
+# Health check
+curl -s "http://${NODE_IP}:30031/ready"
+# → ready
+
+# Query for any RRPair record
+curl -s "http://${NODE_IP}:30031/loki/api/v1/query_range" \
+  --data-urlencode 'query={cluster=~".+"}' \
+  --data-urlencode 'limit=1' \
+  --data-urlencode 'start=0' | jq '.data.result | length'
+# → should be > 0 once traffic is flowing
 ```
 
-In Grafana Explore, query `{cluster=~".+"}` (or scope to a specific service: `{cluster=~".+", service="java-server"}`). Two dashboards are auto-provisioned under the **Speedscale BYOC** folder:
+**4. Grafana shows data**
 
-- **Speedscale BYOC** — infra view (forwarder metrics, queue depths, structured RRPair log stream)
-- **Speedscale Traffic** — RRPair traffic explorer (filter by service / method / status / endpoint regex; one-line-per-request format; expand any row for the full JSON with req/res bodies)
+Open `http://${NODE_IP}:30030` (admin/admin). Go to Explore → select the Loki datasource → run `{cluster=~".+"}`. You should see log lines with RRPair JSON. The **Speedscale BYOC** and **Speedscale Traffic** dashboards are auto-provisioned under Home → Dashboards.
 
-> **`minikube --driver=docker` on macOS:** the node IP `192.168.49.2` lives inside Docker Desktop's hidden VM and isn't routable from your host. Either flip on Docker Desktop's "host networking" (Settings → Resources → Network), switch to a driver where the VM IP routes natively (OrbStack, vfkit, hyperkit), or run a `socat` container to bridge each port:
-> ```bash
-> kubectl -n byoc-grafana run grafana-bridge --image=alpine/socat \
->   --restart=Never -- TCP-LISTEN:30030,fork TCP:localhost:30030
-> ```
+## Troubleshoot
+
+**`EXPORTERS` is null or missing `byoc_otel`**
+
+The Operator applied its default values and overwrote the forwarder config. Ensure you passed `--set forwarder.exporters.byoc_otel.*` (or `-f operator-values.yaml`) on your `helm upgrade`. After fixing, restart the forwarder: `kubectl -n speedscale rollout restart deploy/speedscale-forwarder`.
+
+**OTel Collector logs show no received records**
+
+The Forwarder can't reach the Collector. Common causes:
+- Wrong namespace in the endpoint (must match the `-n` you used for `byoc-grafana`)
+- Port mismatch: the OTel Collector gRPC port is **4317** — if you used `4318`, change it to `4317`
+- Network policy blocking cross-namespace traffic
+
+**`http://` prefix required on `otel_endpoint`**
+
+The Forwarder's gRPC dial requires a scheme prefix. Always use `http://otel-collector.<namespace>.svc.cluster.local:4317`, not just `otel-collector.<namespace>.svc.cluster.local:4317`.
+
+**OTel Collector in CrashLoopBackOff**
+
+Check logs: `kubectl -n byoc-grafana logs deploy/otel-collector`. Usually a YAML/indentation error in the ConfigMap. Run `helm template byoc-grafana speedscale-byoc/grafana -n byoc-grafana | kubectl apply --dry-run=client -f -` to catch config errors before applying.
+
+**Loki PVC full**
+
+```bash
+kubectl -n byoc-grafana get pvc
+```
+
+If `loki-storage` is at 100%, either increase `storage.loki` (requires recreating the PVC) or reduce `retention.loki`. For demo use `24h` is usually sufficient; reduce to `6h` if running repeated load tests.
+
+**`loki-gather.py` returns zero records**
+
+- Confirm records exist in Grafana Explore first
+- Check that `--service` matches exactly (case-sensitive stream label)
+- Widen `--start` (e.g. `-2h` instead of `-15m`)
+- On `minikube --driver=docker`, the NodePort isn't routable from the host — use `kubectl port-forward svc/loki 30031:3100 -n byoc-grafana` and point `--loki-url http://localhost:30031`
+
+## Upgrade
+
+```bash
+helm repo update speedscale-byoc
+helm upgrade byoc-grafana speedscale-byoc/grafana -n byoc-grafana
+```
+
+Check the [CHANGELOG](CHANGELOG.md) before upgrading — breaking changes to the OTel Collector config or Loki schema require draining data first.
+
+To upgrade images only without changing chart values:
+
+```bash
+helm upgrade byoc-grafana speedscale-byoc/grafana -n byoc-grafana \
+  --set image.loki=grafana/loki:3.0.0 \
+  --reuse-values
+```
 
 ## Replay (gather a subset of traffic into proxymock)
 
-Once Loki has some real traffic, you can pull any slice of it out as a directory `proxymock` reads:
-
 ```bash
 NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
 
-python3 scripts/loki-gather.py \
+python3 ../../scripts/loki-gather.py \
   --loki-url http://${NODE_IP}:30031 \
   --service  java-server \
   --status   2.. \
-  --endpoint '^/spacex/.+' \
-  --start    -15m \
-  --out-dir  /tmp/spacex-snapshot
+  --endpoint '^/api/.+' \
+  --start    -1h \
+  --out-dir  /tmp/snapshot
 
-proxymock mock --in /tmp/spacex-snapshot
+proxymock mock --in /tmp/snapshot
 ```
 
-The gathered directory is the same shape `speedctl proxymock cloud pull snapshot` produces after expanding a cloud snapshot — so anything in the proxymock ecosystem that reads a recording works without changes. See `scripts/loki-gather.py --help` for all filter flags.
+See [`scripts/README.md`](../../scripts/README.md) for all filter flags and workflow notes.
+
+## Configuration reference
+
+| Key | Default | Description |
+|---|---|---|
+| `nodePort.grafana` | `30030` | NodePort for the Grafana UI |
+| `nodePort.loki` | `30031` | NodePort for the Loki HTTP API (used by `loki-gather.py`) |
+| `storage.loki` | `5Gi` | PVC size for Loki chunks + index |
+| `storage.grafana` | `2Gi` | PVC size for Grafana dashboards + plugins |
+| `retention.loki` | `24h` | How long Loki keeps log data (e.g. `24h`, `168h`, `720h`) |
+| `retention.prometheus` | `24h` | How long Prometheus keeps metrics |
+| `grafana.adminUser` | `admin` | Grafana admin username |
+| `grafana.adminPassword` | `admin` | Grafana admin password — **change this for any shared environment** |
+| `image.loki` | `grafana/loki:2.9.8` | Loki container image |
+| `image.grafana` | `grafana/grafana:11.1.4` | Grafana container image |
+| `image.prometheus` | `prom/prometheus:v2.54.1` | Prometheus container image |
+| `image.otelCollector` | `otel/opentelemetry-collector-contrib:0.108.0` | OTel Collector image |
