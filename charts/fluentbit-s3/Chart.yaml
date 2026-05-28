@@ -17,6 +17,11 @@ keywords:
   - fluentbit
   - archive
   - data-lake
+home: https://github.com/speedscale/speedscale-byoc
+maintainers:
+  - name: Speedscale
+    email: support@speedscale.com
+    url: https://speedscale.com
 annotations:
   artifacthub.io/category: infrastructure
   artifacthub.io/license: Apache-2.0

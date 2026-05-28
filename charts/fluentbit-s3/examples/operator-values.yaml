@@ -1,0 +1,49 @@
+# Speedscale Operator values for the BYOC Fluent Bit → S3 scenario.
+# Pass to the operator chart with:
+#   helm upgrade --install speedscale-operator speedscale/speedscale-operator \
+#     -n speedscale --create-namespace \
+#     -f operator-values.yaml
+
+clusterName: "my-cluster-byoc-s3"
+deployDemo: ""
+
+image:
+  registry: "gcr.io/speedscale"
+  pullPolicy: "IfNotPresent"
+
+createJKS: false
+apiKeySecret: "speedscale-apikey"
+dashboardAccess: false
+
+namespaceSelector:
+  - "default"
+
+filterRule: "standard"
+dlp:
+  enabled: true
+  config: "standard"
+
+operator:
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+
+forwarder:
+  resources:
+    requests:
+      cpu: "300m"
+      memory: "250Mi"
+    limits:
+      cpu: "1500m"
+      memory: "2Gi"
+  exporters:
+    byoc_otel:
+      # Point at the OTel Collector in the byoc-fluentbit-s3 namespace.
+      # Must include the http:// scheme.
+      otel_endpoint: "http://otel-collector.byoc-fluentbit-s3.svc.cluster.local:4317"
+      filter_rule: "standard"
+      dlp_config_id: "standard"
