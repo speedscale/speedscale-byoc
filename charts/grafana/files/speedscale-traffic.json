@@ -50,7 +50,7 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration [$__range])",
+          "expr": "avg(quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [$__range]))",
           "refId": "A",
           "instant": true
         }
@@ -65,7 +65,7 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "count(count by (body_location) (count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range])))",
+          "expr": "count without () (count by (body_location) (count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range])))",
           "refId": "A",
           "instant": true
         }
@@ -79,8 +79,8 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "sum by (cluster, service, body_location) (rate({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [1m]))",
-          "legendFormat": "{{cluster}}/{{service}} {{body_location}}",
+          "expr": "topk(20, sum by (body_location)(rate({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [1m])))",
+          "legendFormat": "{{body_location}}",
           "refId": "A"
         }
       ],
@@ -93,18 +93,18 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "quantile_over_time(0.50, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration [1m])",
-          "legendFormat": "p50",
+          "expr": "topk(10, avg by (body_location)(quantile_over_time(0.50, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m])))",
+          "legendFormat": "{{body_location}}",
           "refId": "A"
         },
         {
-          "expr": "quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration [1m])",
-          "legendFormat": "p95",
+          "expr": "topk(10, avg by (body_location)(quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m])))",
+          "legendFormat": "{{body_location}}",
           "refId": "B"
         },
         {
-          "expr": "quantile_over_time(0.99, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration [1m])",
-          "legendFormat": "p99",
+          "expr": "topk(10, avg by (body_location)(quantile_over_time(0.99, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m])))",
+          "legendFormat": "{{body_location}}",
           "refId": "C"
         }
       ],
@@ -132,7 +132,7 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "sum by (cluster, service, body_location) (count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range]))",
+          "expr": "topk(20, sum by (body_location)(count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range])))",
           "refId": "A",
           "instant": true,
           "format": "table"
@@ -143,8 +143,8 @@
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true },
-            "indexByName": { "cluster": 0, "service": 1, "body_location": 2, "Value": 3 },
-            "renameByName": { "cluster": "cluster", "service": "app", "body_location": "endpoint", "Value": "requests" }
+            "indexByName": { "body_location": 0, "Value": 1 },
+            "renameByName": { "body_location": "endpoint", "Value": "requests" }
           }
         },
         { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "requests", "desc": true }] } }
