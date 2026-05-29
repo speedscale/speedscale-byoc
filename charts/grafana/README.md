@@ -4,15 +4,31 @@ This reference architecture captures real traffic from your apps, ships it throu
 
 ## Architecture
 
-**Capture.** The Forwarder's `byoc_otel` exporter ships RRPairs as OTLP logs into your own Loki — no Speedscale Cloud round-trip. Grafana sits on top for indexing, dashboards, and ad-hoc queries.
+**Capture.** The Forwarder's `byoc_otel` exporter ships RRPairs as OTLP logs into the bundled OTel Collector — no Speedscale Cloud round-trip. The Collector fans that single stream out to two destinations:
+
+- **Loki** receives the full RRPair logs for endpoint-level drill-down and replay pull-out.
+- **Prometheus** receives derived traffic metrics (using OTel `count` + `sum` connectors) for the dashboard's aggregate panels.
 
 ```mermaid
 flowchart LR
     apps([Your apps]) --> fwd[Speedscale Forwarder]
     fwd --> col[OTel Collector]
-    col --> loki[(Loki)]
+    col -->|full RRPairs as logs| loki[(Loki)]
+    col -->|derived metrics| prom[(Prometheus)]
     loki --> grafana[Grafana]
+    prom --> grafana
 ```
+
+**Metrics.** The Collector derives two metrics from the RRPair log stream and remote-writes them to Prometheus — the forwarder sends nothing twice:
+
+| Metric | Labels | Description |
+|---|---|---|
+| `speedscale_calls_total` | `svc`, `status` | Request count by service and HTTP status code |
+| `speedscale_request_duration_ms_sum_total` | `svc` | Summed request duration in milliseconds by service |
+
+The Grafana dashboard's aggregate panels (Requests, Error rate, Status distribution, Request rate by service, Avg latency, Avg latency by service) read PromQL from Prometheus. These are fixed-cardinality queries that stay fast regardless of time window or endpoint count. Loki still backs the endpoint-level panels (Distinct endpoints, Top endpoints, Recent traffic) and the replay pull-out.
+
+> **Note on latency percentiles:** The current latency panels show *average* latency derived from summed logs. True p50/p95/p99 percentiles require span-level histograms (the `spanmetrics` connector) and are a planned follow-up — average is accurate but not a substitute for a true percentile distribution.
 
 **Replay.** `loki-gather.py` queries any subset of Loki back out and writes a `proxymock`-readable directory. Same real traffic you captured drives your tests.
 
