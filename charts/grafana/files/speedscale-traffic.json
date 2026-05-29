@@ -108,7 +108,7 @@
       },
       "targets": [
         {
-          "expr": "max(quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [$__range]))",
+          "expr": "max(quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json duration=\"body.duration\", method=\"body.command\", status=\"body.status\", location=\"body.location\" | method=~\"$method\" | status=~\"$status\" | location=~\"$endpoint\" | unwrap duration | __error__ = \"\" [$__range]))",
           "refId": "A",
           "instant": true
         }
@@ -173,8 +173,8 @@
       },
       "targets": [
         {
-          "expr": "topk(20, sum by (body_location)(rate({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [1m])))",
-          "legendFormat": "{{body_location}}",
+          "expr": "topk(20, sum by (service, body_location)(rate({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [1m])))",
+          "legendFormat": "{{service}} {{body_location}}",
           "refId": "A"
         }
       ],
@@ -207,17 +207,17 @@
       },
       "targets": [
         {
-          "expr": "avg(quantile_over_time(0.50, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m]))",
+          "expr": "avg(quantile_over_time(0.50, {service=~\"$service\", cluster=~\"$cluster\"} | json duration=\"body.duration\", method=\"body.command\", status=\"body.status\", location=\"body.location\" | method=~\"$method\" | status=~\"$status\" | location=~\"$endpoint\" | unwrap duration | __error__ = \"\" [1m]))",
           "legendFormat": "P50",
           "refId": "A"
         },
         {
-          "expr": "avg(quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m]))",
+          "expr": "avg(quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json duration=\"body.duration\", method=\"body.command\", status=\"body.status\", location=\"body.location\" | method=~\"$method\" | status=~\"$status\" | location=~\"$endpoint\" | unwrap duration | __error__ = \"\" [1m]))",
           "legendFormat": "P95",
           "refId": "B"
         },
         {
-          "expr": "avg(quantile_over_time(0.99, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m]))",
+          "expr": "avg(quantile_over_time(0.99, {service=~\"$service\", cluster=~\"$cluster\"} | json duration=\"body.duration\", method=\"body.command\", status=\"body.status\", location=\"body.location\" | method=~\"$method\" | status=~\"$status\" | location=~\"$endpoint\" | unwrap duration | __error__ = \"\" [1m]))",
           "legendFormat": "P99",
           "refId": "C"
         }
@@ -275,7 +275,7 @@
       },
       "targets": [
         {
-          "expr": "topk(20, sum by (body_location)(count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range])))",
+          "expr": "topk(20, sum by (service, body_location)(count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range])))",
           "refId": "A",
           "instant": true,
           "format": "table"
@@ -289,10 +289,12 @@
               "Time": true
             },
             "indexByName": {
-              "body_location": 0,
-              "Value": 1
+              "service": 0,
+              "body_location": 1,
+              "Value": 2
             },
             "renameByName": {
+              "service": "service",
               "body_location": "endpoint",
               "Value": "requests"
             }
