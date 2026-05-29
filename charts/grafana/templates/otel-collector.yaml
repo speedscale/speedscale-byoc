@@ -80,6 +80,63 @@ data:
             value: cluster
             action: insert
 
+      # --- Metrics derivation processors ---
+      # Promotes RRPair body fields to log attributes so the count and sum
+      # connectors can group by them. Each log body is a map with fields:
+      # service (string), status (string e.g. "200"/"504"), l7protocol
+      # ("http"/"postgres"/"mysql"/"grpc"), duration (number, ms).
+      transform/rrpair-attrs:
+        log_statements:
+          - context: log
+            statements:
+              - set(attributes["svc"],         body["service"])
+              - set(attributes["status"],      body["status"])
+              - set(attributes["l7"],          body["l7protocol"])
+              - set(attributes["duration_ms"], Double(body["duration"]))
+
+      # Only derive metrics for HTTP traffic - keeps cardinality bounded
+      # and avoids protocol-specific status semantics (SQL error codes, etc.).
+      # Non-HTTP rrpairs continue through the logs pipeline to Loki unchanged.
+      filter/http-only:
+        error_mode: ignore
+        logs:
+          log_record:
+            - 'attributes["l7"] != "http"'
+
+      # Convert delta-temporality connector output to cumulative so
+      # prometheusremotewrite can emit them as proper Prometheus counters.
+      # The count and sum connectors emit Delta by default; remote-write
+      # requires Cumulative for monotonic sums.
+      deltatocumulative/traffic: {}
+
+    connectors:
+      # countconnector: counts log records grouped by svc + status.
+      # Emits speedscale_calls (monotonic sum) per (svc, status) pair.
+      # Error rate in PromQL: rate(speedscale_calls{status=~"5.."}[5m])
+      #                       / rate(speedscale_calls[5m])
+      count:
+        logs:
+          speedscale_calls:
+            description: "Total HTTP calls observed by Speedscale forwarder, by service and HTTP status"
+            attributes:
+              - key: svc
+              - key: status
+
+      # sumconnector: sums duration_ms per svc.
+      # Avg latency in PromQL:
+      #   rate(speedscale_request_duration_ms_sum[5m])
+      #   / rate(speedscale_calls{svc=~".+"}[5m])
+      # NOTE: true percentiles (p50/p95/p99) are NOT derivable from log-based
+      # sums. They require explicit histogram instrumentation (spanmetrics
+      # connector or native OTLP spans). Follow-up task.
+      sum:
+        logs:
+          speedscale_request_duration_ms_sum:
+            description: "Sum of HTTP request duration (ms) by service; divide by speedscale_calls for avg latency"
+            source_attribute: duration_ms
+            attributes:
+              - key: svc
+
     exporters:
       loki:
         endpoint: http://loki.{{ .Release.Namespace }}.svc.cluster.local:3100/loki/api/v1/push
@@ -97,7 +154,7 @@ data:
         verbosity: basic
 
     extensions:
-      # health_check extension exposes /health on :13133 — used by k8s
+      # health_check extension exposes /health on :13133 - used by k8s
       # readiness/liveness probes below. Argo CD treats a Deployment as
       # Healthy only when all its pods have Ready=true, which in turn
       # waits for this probe.
@@ -107,13 +164,27 @@ data:
     service:
       extensions: [health_check]
       pipelines:
+        # Original logs pipeline: all rrpairs -> Loki. UNCHANGED.
         logs:
           receivers: [otlp]
           processors: [resource/loki-hints, attributes/loki-hints, batch]
           exporters: [loki, debug]
+
+        # Metrics derivation branch: same otlp receiver fans out to this
+        # pipeline in parallel (OTel fan-out is safe - each pipeline gets
+        # its own copy of each log record). Promotes body fields, filters
+        # to HTTP, then feeds count + sum connectors.
+        logs/metrics:
+          receivers: [otlp]
+          processors: [transform/rrpair-attrs, filter/http-only, batch]
+          exporters: [count, sum]
+
+        # Metrics storage: connectors (count, sum) act as both exporter
+        # (for logs/metrics above) and receiver (for this pipeline).
+        # Remote-write to in-cluster Prometheus.
         metrics:
-          receivers: [prometheus]
-          processors: [batch]
+          receivers: [prometheus, count, sum]
+          processors: [deltatocumulative/traffic, batch]
           exporters: [prometheusremotewrite, debug]
 ---
 apiVersion: apps/v1
