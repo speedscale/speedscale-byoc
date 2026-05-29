@@ -41,4 +41,4 @@ image:
   loki: grafana/loki:2.9.8
   grafana: grafana/grafana:11.1.4
   prometheus: prom/prometheus:v2.54.1
-  otelCollector: otel/opentelemetry-collector-contrib:0.108.0
+  otelCollector: otel/opentelemetry-collector-contrib:0.120.0
