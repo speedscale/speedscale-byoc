@@ -1,6 +1,8 @@
 {
-  "annotations": { "list": [] },
-  "description": "Speedscale RRPair traffic viewer for BYOC + Loki. Inspired by the Speedscale Cloud traffic explorer — filter by service, method, status class, and endpoint regex; drill into recent requests without scrolling through raw JSON blobs.",
+  "annotations": {
+    "list": []
+  },
+  "description": "Speedscale RRPair traffic viewer for BYOC + Loki. Inspired by the Speedscale Cloud traffic explorer \u2014 filter by service, method, status class, and endpoint regex; drill into recent requests without scrolling through raw JSON blobs.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -11,8 +13,16 @@
     {
       "type": "stat",
       "title": "Requests",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
           "expr": "sum(count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range]))",
@@ -20,13 +30,29 @@
           "instant": true
         }
       ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area"
+      }
     },
     {
       "type": "stat",
       "title": "Error rate (4xx/5xx)",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
           "expr": "100 * sum(count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | body_status=~\"[45]..\" [$__range])) / sum(count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range]))",
@@ -34,35 +60,87 @@
           "instant": true
         }
       ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "noValue": "0",
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
         }
       }
     },
     {
       "type": "stat",
       "title": "p95 latency",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
-          "expr": "avg(quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [$__range]))",
+          "expr": "max(quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [$__range]))",
           "refId": "A",
           "instant": true
         }
       ],
-      "options": { "reduceOptions": { "calcs": ["max"] }, "colorMode": "value", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "ms" } }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "max"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        }
+      }
     },
     {
       "type": "stat",
       "title": "Distinct endpoints",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
           "expr": "count without () (count by (body_location) (count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range])))",
@@ -70,13 +148,29 @@
           "instant": true
         }
       ],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
     },
     {
       "type": "timeseries",
       "title": "Request rate by endpoint",
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 4 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
           "expr": "topk(20, sum by (body_location)(rate({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [1m])))",
@@ -84,37 +178,74 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "stacking": { "mode": "normal" }, "fillOpacity": 30, "lineWidth": 1 }, "unit": "reqps" } }
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 30,
+            "lineWidth": 1
+          },
+          "unit": "reqps"
+        }
+      }
     },
     {
       "type": "timeseries",
       "title": "Latency percentiles",
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 4 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
-          "expr": "topk(10, avg by (body_location)(quantile_over_time(0.50, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m])))",
-          "legendFormat": "{{body_location}}",
+          "expr": "avg(quantile_over_time(0.50, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m]))",
+          "legendFormat": "P50",
           "refId": "A"
         },
         {
-          "expr": "topk(10, avg by (body_location)(quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m])))",
-          "legendFormat": "{{body_location}}",
+          "expr": "avg(quantile_over_time(0.95, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m]))",
+          "legendFormat": "P95",
           "refId": "B"
         },
         {
-          "expr": "topk(10, avg by (body_location)(quantile_over_time(0.99, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m])))",
-          "legendFormat": "{{body_location}}",
+          "expr": "avg(quantile_over_time(0.99, {service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location, body_duration | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | unwrap body_duration | __error__ = \"\" [1m]))",
+          "legendFormat": "P99",
           "refId": "C"
         }
       ],
-      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }, "unit": "ms" } }
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2
+          },
+          "unit": "ms"
+        }
+      }
     },
     {
       "type": "barchart",
       "title": "Status code distribution",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
           "expr": "sum by (body_status) (count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range]))",
@@ -123,13 +254,25 @@
           "instant": true
         }
       ],
-      "options": { "orientation": "horizontal", "xTickLabelRotation": 0, "showValue": "auto" }
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "showValue": "auto"
+      }
     },
     {
       "type": "table",
       "title": "Top endpoints by request count",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
           "expr": "topk(20, sum by (body_location)(count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range])))",
@@ -142,20 +285,47 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true },
-            "indexByName": { "body_location": 0, "Value": 1 },
-            "renameByName": { "body_location": "endpoint", "Value": "requests" }
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "body_location": 0,
+              "Value": 1
+            },
+            "renameByName": {
+              "body_location": "endpoint",
+              "Value": "requests"
+            }
           }
         },
-        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "requests", "desc": true }] } }
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "requests",
+                "desc": true
+              }
+            ]
+          }
+        }
       ]
     },
     {
       "type": "logs",
       "title": "Recent traffic (filtered)",
       "description": "One line per request: cluster/app, method, status, latency (ms), endpoint, then a [dlp] hint when DLP modified the record. Click a row to expand the full RRPair JSON including request/response bodies (base64).",
-      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 21 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
           "expr": "{service=~\"$service\", cluster=~\"$cluster\"} | json | keep cluster, service, body_command, body_status, body_duration, body_location, body_dlpModified | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | line_format \"{{.cluster}}/{{.service}}  {{.body_command}} {{.body_status}} {{ printf \\\"%4s\\\" .body_duration }}ms  {{.body_location}}  {{ if eq .body_dlpModified \\\"true\\\" }}[dlp]{{end}}\"",
@@ -174,62 +344,132 @@
   ],
   "refresh": "10s",
   "schemaVersion": 39,
-  "tags": ["speedscale", "byoc", "traffic"],
+  "tags": [
+    "speedscale",
+    "byoc",
+    "traffic"
+  ],
   "templating": {
     "list": [
       {
         "name": "cluster",
         "label": "Cluster",
         "type": "query",
-        "datasource": { "type": "loki", "uid": "loki" },
-        "query": { "label": "cluster", "stream": "", "type": 1 },
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "query": {
+          "label": "cluster",
+          "stream": "",
+          "type": 1
+        },
         "refresh": 2,
         "includeAll": true,
         "multi": true,
-        "current": { "selected": false, "text": "All", "value": ".+" }
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ".+"
+        }
       },
       {
         "name": "service",
         "label": "App / Service",
         "type": "query",
-        "datasource": { "type": "loki", "uid": "loki" },
-        "query": { "label": "service", "stream": "{cluster=~\"$cluster\"}", "type": 1 },
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "query": {
+          "label": "service",
+          "stream": "{cluster=~\"$cluster\"}",
+          "type": 1
+        },
         "refresh": 2,
         "includeAll": true,
         "multi": true,
-        "current": { "selected": false, "text": "All", "value": ".+" }
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ".+"
+        }
       },
       {
         "name": "method",
         "label": "Method (regex)",
         "type": "textbox",
-        "current": { "value": ".+", "text": ".+" },
-        "options": [{ "value": ".+", "text": ".+", "selected": true }]
+        "current": {
+          "value": ".+",
+          "text": ".+"
+        },
+        "options": [
+          {
+            "value": ".+",
+            "text": ".+",
+            "selected": true
+          }
+        ]
       },
       {
         "name": "status",
         "label": "Status (regex)",
         "type": "custom",
         "query": ".+,2..,4..,5..",
-        "current": { "value": ".+", "text": ".+" },
+        "current": {
+          "value": ".+",
+          "text": ".+"
+        },
         "options": [
-          { "value": ".+", "text": "any", "selected": true },
-          { "value": "2..", "text": "2xx" },
-          { "value": "4..", "text": "4xx" },
-          { "value": "5..", "text": "5xx" }
+          {
+            "value": ".+",
+            "text": "any",
+            "selected": true
+          },
+          {
+            "value": "2..",
+            "text": "2xx"
+          },
+          {
+            "value": "4..",
+            "text": "4xx"
+          },
+          {
+            "value": "5..",
+            "text": "5xx"
+          }
         ]
       },
       {
         "name": "endpoint",
         "label": "Endpoint (regex)",
         "type": "textbox",
-        "current": { "value": ".+", "text": ".+" },
-        "options": [{ "value": ".+", "text": ".+", "selected": true }]
+        "current": {
+          "value": ".+",
+          "text": ".+"
+        },
+        "options": [
+          {
+            "value": ".+",
+            "text": ".+",
+            "selected": true
+          }
+        ]
       }
     ]
   },
-  "time": { "from": "now-15m", "to": "now" },
-  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m"] },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m"
+    ]
+  },
   "timezone": "",
   "title": "Speedscale Traffic",
   "uid": "speedscale-traffic",
