@@ -6,7 +6,7 @@ Reference architecture Helm charts for Speedscale BYOC (Bring Your Own Cloud) �
 
 | Chart | Stack | Best for |
 |---|---|---|
-| [`charts/grafana/`](charts/grafana/) | OTel Collector → Loki → Grafana | Live dashboard + LogQL queries |
+| [`charts/grafana/`](charts/grafana/) | OTel Collector → Loki + Prometheus → Grafana | Live dashboard + PromQL aggregates + LogQL drill-down |
 | [`charts/elasticsearch/`](charts/elasticsearch/) | OTel Collector → Elasticsearch → Kibana | Full-text search + Kibana Discover |
 | [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | OTel Collector → Fluent Bit → GCS | Durable GCS archive + BigQuery |
 | [`charts/fluentbit-s3/`](charts/fluentbit-s3/) | OTel Collector → Fluent Bit → S3 | Durable S3 archive + Athena |
@@ -39,7 +39,7 @@ See each chart's `README.md` for the full install + configure + replay walkthrou
 ```
 speedscale-byoc/
 ├── charts/
-│   ├── grafana/          # Loki + Grafana + OTel Collector + Prometheus
+│   ├── grafana/          # OTel Collector + Loki + Prometheus + Grafana
 │   ├── elasticsearch/    # Elasticsearch + Kibana + OTel Collector
 │   ├── fluentbit-gcs/    # OTel Collector + Fluent Bit → Google Cloud Storage
 │   └── fluentbit-s3/     # OTel Collector + Fluent Bit → Amazon S3
