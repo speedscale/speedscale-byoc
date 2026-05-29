@@ -36,6 +36,13 @@ data:
       # Demo cluster — age RRPair logs out fast so the PVC doesn't fill up
       # if someone leaves a load test running. Compactor below enforces it.
       retention_period: 24h
+      # High-cardinality endpoints (>500 distinct body_location values over
+      # longer windows) exceed Loki's default 500-series cap and break the
+      # "Top endpoints" and "Distinct endpoints" dashboard panels.  5000
+      # comfortably covers observed ~1300 distinct endpoints/hour while
+      # keeping query memory reasonable; topk(20) still bounds what's
+      # displayed.
+      max_query_series: 5000
 
     compactor:
       working_directory: /loki/compactor
