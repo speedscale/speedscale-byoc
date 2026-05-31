@@ -6,8 +6,8 @@ description: |
   Hive-partitioned gzipped NDJSON objects compatible with Athena/Glue external tables.
   Pairs with the Speedscale Operator chart (installed separately into the `speedscale` namespace).
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 1.0.1
+appVersion: "1.0.1"
 keywords:
   - speedscale
   - byoc

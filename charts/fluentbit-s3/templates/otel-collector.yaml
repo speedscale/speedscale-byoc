@@ -23,6 +23,7 @@ data:
       # 3.1.x collapsed an entire ResourceLogs batch into one record.
       otlphttp/fluentbit:
         endpoint: http://fluent-bit.{{ .Release.Namespace }}.svc.cluster.local:4318
+        encoding: json
       debug:
         verbosity: basic
 
