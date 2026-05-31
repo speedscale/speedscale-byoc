@@ -1,4 +1,4 @@
-# Example Argo CD Application manifest for the BYOC Fluent Bit → GCS
+# Example Argo CD Application manifest for the BYOC OTel Collector → GCS
 # reference architecture.
 #
 # Prerequisite: the K8s Secret `byoc-fluentbit-gcs` (HMAC creds) must
@@ -20,9 +20,9 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/speedscale/demo.git
-    targetRevision: master
-    path: reference-architectures/fluent-bit/chart
+    repoURL: https://github.com/speedscale/speedscale-byoc.git
+    targetRevision: main
+    path: charts/fluentbit-gcs
     helm:
       # Required overrides — your bucket + region. Everything else has
       # sensible defaults in values.yaml.
@@ -30,10 +30,6 @@ spec:
         gcs:
           bucket: my-rrpair-archive
           region: us-central1
-          # Optional: tune flush thresholds for prod workloads.
-          # Larger objects = fewer GCS PUTs = lower per-request cost.
-          # totalFileSize: 50M
-          # uploadTimeout: 5m
 
   destination:
     server: https://kubernetes.default.svc
