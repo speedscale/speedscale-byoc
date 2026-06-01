@@ -31,6 +31,41 @@ entries:
       artifacthub.io/category: infrastructure
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
+    appVersion: 2.0.0
+    created: "2026-06-01T12:27:41.683119486Z"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Google
+      Cloud Storage. The collector''s native awss3 exporter writes OTLP-JSON objects
+      directly to a GCS bucket via the GCS S3-compatible XML API (HMAC credentials).
+      No Fluent Bit required. Pairs with the Speedscale Operator chart (installed
+      separately into the `speedscale` namespace); this chart installs only the in-cluster
+      pipeline that receives RRPairs from the Forwarder''s byoc_otel exporter and
+      ships them to long-term object storage. '
+    digest: 689ba778c0fbf104140c2a91de024d912d02bb2ce60178c51e7cd80298e9b3c4
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - gcs
+    - google-cloud-storage
+    - opentelemetry
+    - awss3
+    - archive
+    - data-lake
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: fluentbit-gcs
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/fluentbit-gcs
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-gcs-2.0.0/fluentbit-gcs-2.0.0.tgz
+    version: 2.0.0
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
     appVersion: 1.0.0
     created: "2026-05-28T06:32:05.11149-04:00"
     description: 'Speedscale BYOC reference architecture — OTel Collector → Fluent
@@ -58,6 +93,39 @@ entries:
     - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-gcs-1.0.0/fluentbit-gcs-1.0.0.tgz
     version: 1.0.0
   fluentbit-s3:
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 2.0.0
+    created: "2026-06-01T12:27:41.902204939Z"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Amazon
+      S3. The collector''s native awss3 exporter writes OTLP-JSON objects directly
+      to S3. Supports both static IAM credentials (Secret) and EKS IRSA (no credentials
+      in cluster). No Fluent Bit required. Pairs with the Speedscale Operator chart
+      (installed separately into the `speedscale` namespace). '
+    digest: 247915c27534bde8fa3d8d37705332b415c09222068e1eb4ff867ac002566a5f
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - s3
+    - aws
+    - opentelemetry
+    - awss3
+    - archive
+    - data-lake
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: fluentbit-s3
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/fluentbit-s3
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-s3-2.0.0/fluentbit-s3-2.0.0.tgz
+    version: 2.0.0
   - annotations:
       artifacthub.io/category: infrastructure
       artifacthub.io/license: Apache-2.0
@@ -112,4 +180,4 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/grafana-1.0.0/grafana-1.0.0.tgz
     version: 1.0.0
-generated: "2026-05-28T06:32:05.110651-04:00"
+generated: "2026-06-01T12:27:42.118191471Z"
