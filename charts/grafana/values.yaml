@@ -4,7 +4,7 @@
 # Prometheus). The Speedscale Operator + Forwarder are installed separately
 # via the upstream `speedscale/speedscale-operator` chart, configured to
 # ship RRPairs to this chart's OTel Collector via:
-#   byoc_otel.otel_endpoint: http://otel-collector.<namespace>.svc.cluster.local:4317
+#   byoc_grafana.otel_endpoint: http://otel-collector.<namespace>.svc.cluster.local:4317
 
 # Namespace this chart installs into. Default mirrors the scenario directory
 # name so all four BYOC reference architectures can coexist in one cluster.

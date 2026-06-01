@@ -6,7 +6,7 @@ description: |
   bucket via the GCS S3-compatible XML API (HMAC credentials). No Fluent Bit required.
   Pairs with the Speedscale Operator chart (installed separately into the `speedscale`
   namespace); this chart installs only the in-cluster pipeline that receives RRPairs
-  from the Forwarder's byoc_otel exporter and ships them to long-term object storage.
+  from the Forwarder's byoc_gcs exporter and ships them to long-term object storage.
 type: application
 version: 2.0.0
 appVersion: "2.0.0"

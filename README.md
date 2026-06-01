@@ -11,7 +11,7 @@ Reference architecture Helm charts for Speedscale BYOC (Bring Your Own Cloud) �
 | [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | OTel Collector → Fluent Bit → GCS | Durable GCS archive + BigQuery |
 | [`charts/fluentbit-s3/`](charts/fluentbit-s3/) | OTel Collector → Fluent Bit → S3 | Durable S3 archive + Athena |
 
-All scenarios coexist in separate namespaces on the same cluster. Flip the Forwarder's `byoc_otel.otel_endpoint` to switch which backend receives traffic.
+All scenarios coexist in separate namespaces on the same cluster. Point the Forwarder's `byoc_<backend>` exporter at the backend's collector to choose where traffic goes.
 
 ## Quick start
 
@@ -25,7 +25,7 @@ helm upgrade --install speedscale-operator speedscale/speedscale-operator \
   -n speedscale --create-namespace \
   --set apiKeySecret=speedscale-apikey \
   --set clusterName=my-cluster \
-  --set 'forwarder.exporters.byoc_otel.otel_endpoint=http://otel-collector.byoc-grafana.svc.cluster.local:4317'
+  --set 'forwarder.exporters.byoc_grafana.otel_endpoint=http://otel-collector.byoc-grafana.svc.cluster.local:4317'
 
 # Pick a backend — e.g. Grafana + Loki
 helm upgrade --install byoc-grafana speedscale-byoc/grafana \
@@ -64,7 +64,7 @@ Forwarder's `forwarder.exporters` map at that Collector:
 ```yaml
 forwarder:
   exporters:
-    byoc_otel:                       # one named exporter per backend
+    byoc_grafana:                    # one named exporter per backend
       otel_endpoint: http://otel-collector.byoc-grafana.svc.cluster.local:4317
       dlp_config_id: standard        # DLP + filtering are PER EXPORTER
       filter_rule: standard
@@ -84,7 +84,7 @@ its own DLP/filter policy:
 ```yaml
 forwarder:
   exporters:
-    byoc_otel:                       # → byoc-grafana       (Loki + Grafana)
+    byoc_grafana:                    # → byoc-grafana       (Loki + Grafana)
       otel_endpoint: http://otel-collector.byoc-grafana.svc.cluster.local:4317
       dlp_config_id: standard
       filter_rule: standard

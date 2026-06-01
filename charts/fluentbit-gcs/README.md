@@ -42,7 +42,7 @@ Pick `fluentbit` when:
 
 Pick `grafana` or `elasticsearch` when you need an interactive dashboard / live query UI.
 
-The three scenarios coexist in their own namespaces; flip the forwarder's `byoc_otel.otel_endpoint` to switch which one receives traffic.
+The three scenarios coexist in their own namespaces; flip the forwarder's `byoc_gcs.otel_endpoint` to switch which one receives traffic.
 
 ## Prerequisites
 
@@ -94,9 +94,9 @@ helm upgrade --install speedscale-operator speedscale/speedscale-operator \
   -n speedscale --create-namespace \
   --set apiKeySecret=speedscale-apikey \
   --set clusterName=<YOUR_CLUSTER_NAME> \
-  --set 'forwarder.exporters.byoc_otel.otel_endpoint=http://otel-collector.byoc-fluentbit.svc.cluster.local:4317' \
-  --set 'forwarder.exporters.byoc_otel.filter_rule=standard' \
-  --set 'forwarder.exporters.byoc_otel.dlp_config_id=standard'
+  --set 'forwarder.exporters.byoc_gcs.otel_endpoint=http://otel-collector.byoc-fluentbit.svc.cluster.local:4317' \
+  --set 'forwarder.exporters.byoc_gcs.filter_rule=standard' \
+  --set 'forwarder.exporters.byoc_gcs.dlp_config_id=standard'
 
 # OTel Collector + Fluent Bit → GCS
 helm upgrade --install byoc-fluentbit speedscale-byoc/fluentbit \
@@ -120,7 +120,7 @@ kubectl -n speedscale get cm speedscale-forwarder \
   -o jsonpath='{.data.EXPORTERS}' | jq .
 ```
 
-Expected: JSON with `byoc_otel` and `otel_endpoint` pointing at `byoc-fluentbit`.
+Expected: JSON with `byoc_gcs` and `otel_endpoint` pointing at `byoc-fluentbit`.
 
 **2. OTel Collector is receiving logs**
 
@@ -155,9 +155,9 @@ gcloud storage cat "$(gcloud storage ls gs://my-rrpair-archive/** | tail -1)" \
 
 ## Troubleshoot
 
-**`EXPORTERS` is null or missing `byoc_otel`**
+**`EXPORTERS` is null or missing `byoc_gcs`**
 
-Values weren't applied. Ensure you passed `forwarder.exporters.byoc_otel.*` on `helm upgrade`, then restart: `kubectl -n speedscale rollout restart deploy/speedscale-forwarder`.
+Values weren't applied. Ensure you passed `forwarder.exporters.byoc_gcs.*` on `helm upgrade`, then restart: `kubectl -n speedscale rollout restart deploy/speedscale-forwarder`.
 
 **OTel Collector not receiving records**
 

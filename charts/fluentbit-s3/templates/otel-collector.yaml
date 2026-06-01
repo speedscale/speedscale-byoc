@@ -7,7 +7,7 @@ data:
   otel.yaml: |
     receivers:
       otlp:
-        # Both gRPC (4317) and HTTP (4318) — forwarder's byoc_otel exporter
+        # Both gRPC (4317) and HTTP (4318) — forwarder's byoc_s3 exporter
         # uses gRPC; HTTP left in for curl-based testing.
         protocols:
           grpc:

@@ -7,7 +7,7 @@ data:
   otel.yaml: |
     receivers:
       otlp:
-        # Both gRPC (4317) and HTTP (4318) so the forwarder's byoc_otel
+        # Both gRPC (4317) and HTTP (4318) so the forwarder's byoc_es
         # exporter works regardless of which transport it's compiled with.
         # Released forwarder uses gRPC; HTTP support lands with S-11080.
         protocols:
