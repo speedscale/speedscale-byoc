@@ -50,6 +50,70 @@ speedscale-byoc/
     └── s3-gather.py      # Pull RRPairs from S3 → proxymock snapshot
 ```
 
+## Architecture: one backend, one collector, one exporter
+
+Every chart here follows the same rule, and so should any backend you add:
+
+> **One backend = one self-contained chart = one OTel Collector = one Forwarder exporter.**
+
+The Forwarder captures RRPairs and ships them over OTLP to a backend's OTel
+Collector. Each chart bundles its **own** Collector (Service on `:4317`) that
+exports to **only that backend**. You wire it by pointing one entry in the
+Forwarder's `forwarder.exporters` map at that Collector:
+
+```yaml
+forwarder:
+  exporters:
+    byoc_otel:                       # one named exporter per backend
+      otel_endpoint: http://otel-collector.byoc-grafana.svc.cluster.local:4317
+      dlp_config_id: standard        # DLP + filtering are PER EXPORTER
+      filter_rule: standard
+```
+
+Internal Collector fan-out (`exporters: [a, b]`) is reserved for multiple
+signals of the **same** backend — e.g. the `grafana` chart's Collector emits
+both Loki logs and derived Prometheus metrics. A **different** backend always
+gets its own Collector; never add it as a branch on another backend's pipeline.
+
+### Running multiple backends
+
+To send the same traffic to several backends at once, install each chart and
+add **one exporter per backend** — each pointed at its own Collector, each with
+its own DLP/filter policy:
+
+```yaml
+forwarder:
+  exporters:
+    byoc_otel:                       # → byoc-grafana       (Loki + Grafana)
+      otel_endpoint: http://otel-collector.byoc-grafana.svc.cluster.local:4317
+      dlp_config_id: standard
+      filter_rule: standard
+    byoc_es:                         # → byoc-elasticsearch (Elasticsearch + Kibana)
+      otel_endpoint: http://otel-collector.byoc-elasticsearch.svc.cluster.local:4317
+      dlp_config_id: standard
+      filter_rule: standard
+    byoc_s3:                         # → byoc-fluentbit-s3   (S3 archive)
+      otel_endpoint: http://otel-collector.byoc-fluentbit-s3.svc.cluster.local:4317
+      dlp_config_id: pii-strict      # e.g. archive only heavily-redacted traffic
+      filter_rule: http-only
+```
+
+Splitting at the Forwarder (rather than fanning out inside one shared Collector)
+is deliberate: it gives **per-destination DLP/filtering**, isolates one backend's
+failures from another's, and lets you add or remove a backend without touching
+the others.
+
+### Adding a new backend (e.g. Dynatrace)
+
+1. Add `charts/<backend>/` with an OTel Collector whose pipeline exports **only**
+   to that backend (copy the closest existing chart as a template).
+2. Add one `forwarder.exporters.byoc_<backend>` entry pointed at the new
+   Collector's Service, with its own `dlp_config_id` / `filter_rule`.
+3. Do **not** add the backend to an existing Collector's `exporters` list.
+
+That's the whole recipe — charts stay independent and the Forwarder wiring is
+one entry per backend.
+
 ## Replay captured traffic with proxymock
 
 Each scenario ships a companion `scripts/<backend>-gather.py` that queries a time window of captured traffic and writes a [`proxymock`](https://docs.speedscale.com/proxymock/)-replayable directory:
