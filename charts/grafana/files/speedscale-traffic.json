@@ -452,7 +452,7 @@
     ]
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {
@@ -464,8 +464,8 @@
     ]
   },
   "timezone": "",
-  "title": "Speedscale Traffic",
+  "title": "Speedscale BYOC — Live API Traffic",
   "uid": "speedscale-traffic",
-  "version": 4,
+  "version": 5,
   "weekStart": ""
 }
