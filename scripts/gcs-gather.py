@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """gcs-gather.py — pull a subset of BYOC RRPair traffic from a GCS data-lake
-bucket (written by the fluent-bit reference architecture) and assemble a
-proxymock-replayable directory.
+bucket and assemble a proxymock-replayable directory.
 
-The bucket layout is Hive-style:
+Two object layouts are supported:
 
+Legacy (Fluent Bit s3 output, chart < 2.0.0):
     gs://<bucket>/year=YYYY/month=MM/day=DD/hour=HH/<uuid>-<idx>.json.gz
+    Each object is gzipped NDJSON, one OTLP LogRecord per line, with the
+    RRPair body flattened to the top level.
 
-Each object is gzipped NDJSON, one OTLP LogRecord per line, with the RRPair
-body flattened to the top level (Fluent Bit's `s3` JSON output emits records
-that way — different from the byoc-elasticsearch nested-Body shape).
+Current (OTel Collector awss3 exporter, chart >= 2.0.0):
+    gs://<bucket>/byoc/year=YYYY/month=MM/day=DD/hour=HH/minute=MM/logs_<id>.json
+    Each object is uncompressed OTLP-JSON (marshaler: otlp_json) — a single
+    JSON document with a resourceLogs/scopeLogs/logRecords tree. RRPair fields
+    live in the logRecord body as a kvlistValue.
 
 Usage:
 
@@ -72,12 +76,14 @@ def parse_time(s: str, *, now: datetime | None = None) -> datetime:
 # ─── partition enumeration ──────────────────────────────────────────────────
 
 
-def hour_partitions(start: datetime, end: datetime) -> list[str]:
+def hour_partitions(start: datetime, end: datetime, prefix: str = "") -> list[str]:
     """Return Hive-style prefix strings covering every hour the window touches.
 
     e.g. window 2026-05-25T14:55 → 2026-05-25T15:10 yields:
       ['year=2026/month=05/day=25/hour=14/',
        'year=2026/month=05/day=25/hour=15/']
+
+    An optional leading prefix (e.g. 'byoc/') is prepended to each entry.
     """
     start_h = start.replace(minute=0, second=0, microsecond=0)
     end_h = end.replace(minute=0, second=0, microsecond=0)
@@ -85,7 +91,7 @@ def hour_partitions(start: datetime, end: datetime) -> list[str]:
     cur = start_h
     while cur <= end_h:
         out.append(
-            f"year={cur.year:04d}/month={cur.month:02d}/"
+            f"{prefix}year={cur.year:04d}/month={cur.month:02d}/"
             f"day={cur.day:02d}/hour={cur.hour:02d}/"
         )
         cur += timedelta(hours=1)
@@ -93,14 +99,18 @@ def hour_partitions(start: datetime, end: datetime) -> list[str]:
 
 
 def list_objects(bucket: str, prefix: str) -> list[str]:
-    """`gcloud storage ls gs://<bucket>/<prefix>` — returns full gs:// paths.
+    """`gcloud storage ls -r gs://<bucket>/<prefix>**` — returns full gs:// paths.
 
-    Returns [] if the prefix doesn't exist (no objects in that hour).
+    Uses recursive listing so both layouts are found:
+      Legacy:  gs://<bucket>/year=.../hour=HH/<uuid>.json.gz  (one depth)
+      Current: gs://<bucket>/byoc/year=.../hour=HH/minute=MM/logs_*.json  (two depths)
+
+    Matches .json and .json.gz only. Returns [] if the prefix doesn't exist.
     """
-    url = f"gs://{bucket}/{prefix}"
+    url = f"gs://{bucket}/{prefix}**"
     try:
         proc = subprocess.run(
-            ["gcloud", "storage", "ls", url],
+            ["gcloud", "storage", "ls", "-r", url],
             capture_output=True, text=True, check=False,
         )
     except FileNotFoundError:
@@ -113,12 +123,12 @@ def list_objects(bucket: str, prefix: str) -> list[str]:
     return [
         line.strip()
         for line in proc.stdout.splitlines()
-        if line.strip().endswith(".json.gz")
+        if line.strip().endswith(".json") or line.strip().endswith(".json.gz")
     ]
 
 
 def download_object(gs_url: str) -> bytes:
-    """`gcloud storage cat` the object, return raw bytes (still gzipped)."""
+    """`gcloud storage cat` the object, return raw bytes."""
     proc = subprocess.run(
         ["gcloud", "storage", "cat", gs_url],
         capture_output=True, check=False,
@@ -129,6 +139,64 @@ def download_object(gs_url: str) -> bytes:
             f"{proc.stderr.decode('utf-8', errors='replace')[:300]}"
         )
     return proc.stdout
+
+
+# ─── OTLP-JSON deserialization (awss3 exporter format) ──────────────────────
+
+
+def _otlp_value(v: dict):
+    """Unwrap a single OTLP AnyValue dict to a Python scalar / dict / list."""
+    if "stringValue" in v:
+        return v["stringValue"]
+    if "intValue" in v:
+        return int(v["intValue"])
+    if "doubleValue" in v:
+        return v["doubleValue"]
+    if "boolValue" in v:
+        return v["boolValue"]
+    if "bytesValue" in v:
+        return v["bytesValue"]  # base64 string
+    if "kvlistValue" in v:
+        return _kvlist_to_dict(v["kvlistValue"].get("values", []))
+    if "arrayValue" in v:
+        return [_otlp_value(av) for av in v["arrayValue"].get("values", [])]
+    return None
+
+
+def _kvlist_to_dict(values: list) -> dict:
+    """Convert an OTLP kvlistValue values array to a Python dict."""
+    result = {}
+    for kv in values:
+        result[kv["key"]] = _otlp_value(kv.get("value", {}))
+    return result
+
+
+def parse_otlp_json(data: bytes) -> list[dict]:
+    """Parse an OTLP-JSON object (marshaler: otlp_json) and return a list of
+    flat RRPair body dicts — one per logRecord. The cluster attribute from
+    the resourceLog's resource is backfilled onto each record.
+    """
+    try:
+        obj = json.loads(data)
+    except json.JSONDecodeError:
+        return []
+
+    records: list[dict] = []
+    for rl in obj.get("resourceLogs", []):
+        res_attrs = _kvlist_to_dict(
+            rl.get("resource", {}).get("attributes", [])
+        )
+        for sl in rl.get("scopeLogs", []):
+            for lr in sl.get("logRecords", []):
+                body = lr.get("body", {})
+                if "kvlistValue" not in body:
+                    continue
+                rec = _kvlist_to_dict(body["kvlistValue"].get("values", []))
+                # Backfill cluster from resource attributes when missing
+                if not rec.get("cluster") and res_attrs.get("cluster"):
+                    rec["cluster"] = res_attrs["cluster"]
+                records.append(rec)
+    return records
 
 
 # ─── record filtering ───────────────────────────────────────────────────────
@@ -343,17 +411,21 @@ def main() -> int:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
-    partitions = hour_partitions(start, end)
+    # Enumerate both legacy (no prefix) and current (byoc/ prefix) partitions.
+    # The awss3 exporter writes under byoc/year=.../minute=...; the legacy
+    # Fluent Bit s3 output wrote directly under year=.../hour=...
+    legacy_partitions = hour_partitions(start, end, prefix="")
+    byoc_partitions = hour_partitions(start, end, prefix="byoc/")
+    all_partitions = legacy_partitions + byoc_partitions
+
     print(f"gcs-gather: gs://{args.bucket}", file=sys.stderr)
     print(f"  window:     {start.isoformat()}  →  {end.isoformat()}  "
           f"({(end - start).total_seconds():.0f}s)", file=sys.stderr)
-    print(f"  partitions: {len(partitions)} hour(s)", file=sys.stderr)
-    for p in partitions:
-        print(f"    {p}", file=sys.stderr)
+    print(f"  partitions: {len(all_partitions)} prefix(es) checked", file=sys.stderr)
 
     # Enumerate objects in each partition
     all_objs: list[str] = []
-    for prefix in partitions:
+    for prefix in all_partitions:
         try:
             objs = list_objects(args.bucket, prefix)
         except RuntimeError as e:
@@ -373,7 +445,9 @@ def main() -> int:
         print("hint: widen --start, or check that the bucket is receiving traffic", file=sys.stderr)
         return 1
 
-    # Stream every object, gunzip, parse NDJSON, filter
+    # Stream every object and parse records.
+    # .json.gz  → legacy gzipped NDJSON (Fluent Bit s3 output)
+    # .json     → current OTLP-JSON (awss3 exporter, chart >= 2.0.0)
     matched: list[dict] = []
     for gs_url in all_objs:
         try:
@@ -381,23 +455,30 @@ def main() -> int:
         except RuntimeError as e:
             print(f"warning: {e}", file=sys.stderr)
             continue
-        try:
-            data = gzip.decompress(raw)
-        except OSError:
-            data = raw  # not gzipped — uncompressed fallback
-        for line in data.splitlines():
-            line = line.strip()
-            if not line:
-                continue
+
+        if gs_url.endswith(".json.gz"):
+            # Legacy: gzipped NDJSON, one flat RRPair dict per line
             try:
-                rec = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if not isinstance(rec, dict):
-                continue
-            if not record_matches(rec, args):
-                continue
-            matched.append(rec)
+                data = gzip.decompress(raw)
+            except OSError:
+                data = raw
+            for line in data.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(rec, dict):
+                    continue
+                if record_matches(rec, args):
+                    matched.append(rec)
+        else:
+            # Current: OTLP-JSON document (marshaler: otlp_json)
+            for rec in parse_otlp_json(raw):
+                if record_matches(rec, args):
+                    matched.append(rec)
 
     if not matched:
         print("no traffic matched filters; nothing written.", file=sys.stderr)
@@ -424,7 +505,7 @@ def main() -> int:
         written += 1
 
     write_metadata(out_dir, snapshot_id, args.bucket, start, end,
-                   partitions, len(all_objs), written)
+                   all_partitions, len(all_objs), written)
 
     print(f"wrote {written} RRPairs to {snapshot_dir}", file=sys.stderr)
     for host, n in sorted(hosts.items(), key=lambda kv: -kv[1]):

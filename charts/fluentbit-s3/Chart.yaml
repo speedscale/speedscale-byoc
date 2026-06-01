@@ -1,20 +1,21 @@
 apiVersion: v2
 name: fluentbit-s3
 description: |
-  Speedscale BYOC reference architecture — OTel Collector → Fluent Bit → Amazon S3.
+  Speedscale BYOC reference architecture — OTel Collector → Amazon S3.
+  The collector's native awss3 exporter writes OTLP-JSON objects directly to S3.
   Supports both static IAM credentials (Secret) and EKS IRSA (no credentials in cluster).
-  Hive-partitioned gzipped NDJSON objects compatible with Athena/Glue external tables.
-  Pairs with the Speedscale Operator chart (installed separately into the `speedscale` namespace).
+  No Fluent Bit required. Pairs with the Speedscale Operator chart (installed separately
+  into the `speedscale` namespace).
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 2.0.0
+appVersion: "2.0.0"
 keywords:
   - speedscale
   - byoc
   - s3
   - aws
   - opentelemetry
-  - fluentbit
+  - awss3
   - archive
   - data-lake
 home: https://github.com/speedscale/speedscale-byoc

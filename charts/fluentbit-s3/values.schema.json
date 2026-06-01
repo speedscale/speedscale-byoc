@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
-  "title": "Speedscale BYOC Fluent Bit → S3 chart values",
+  "title": "Speedscale BYOC OTel Collector → S3 chart values",
   "type": "object",
   "additionalProperties": false,
   "required": ["s3"],
@@ -20,28 +20,9 @@
           "minLength": 1,
           "description": "AWS region where the bucket lives (e.g. us-east-1)"
         },
-        "keyFormat": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Fluent Bit s3 key format template (strftime + FB vars)"
-        },
         "credentialsSecret": {
           "type": "string",
           "description": "K8s Secret name with accessKeyId + secretAccessKey. Set to empty string for IRSA."
-        },
-        "totalFileSize": {
-          "type": "string",
-          "pattern": "^[0-9]+(K|M|G)$",
-          "description": "Flush to S3 when batch reaches this size (e.g. 5M)"
-        },
-        "uploadTimeout": {
-          "type": "string",
-          "description": "Flush to S3 after this time even if batch is smaller (e.g. 30s)"
-        },
-        "compression": {
-          "type": "string",
-          "enum": ["gzip", "none"],
-          "description": "Output compression"
         }
       }
     },
@@ -81,8 +62,11 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "otelCollector": { "type": "string", "minLength": 1 },
-        "fluentBit":     { "type": "string", "minLength": 1, "description": "Must be >= 4.0.3" }
+        "otelCollector": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Must be opentelemetry-collector-contrib (awss3 is contrib-only)"
+        }
       }
     }
   }

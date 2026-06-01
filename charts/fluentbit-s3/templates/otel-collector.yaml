@@ -19,10 +19,15 @@ data:
       batch: {}
 
     exporters:
-      # Forward to Fluent Bit via OTLP/HTTP. Fluent Bit >= 4.0.3 required —
-      # 3.1.x collapsed an entire ResourceLogs batch into one record.
-      otlphttp/fluentbit:
-        endpoint: http://fluent-bit.{{ .Release.Namespace }}.svc.cluster.local:4318
+      # Write RRPair objects directly to S3 via the collector's native awss3
+      # exporter. Auth: static credentials (AWS_ACCESS_KEY_ID /
+      # AWS_SECRET_ACCESS_KEY env vars) or IRSA (EKS only — no env vars needed).
+      awss3:
+        s3uploader:
+          region: {{ .Values.s3.region }}
+          s3_bucket: {{ .Values.s3.bucket }}
+          s3_prefix: byoc
+        marshaler: otlp_json
       debug:
         verbosity: basic
 
@@ -36,7 +41,7 @@ data:
         logs:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlphttp/fluentbit, debug]
+          exporters: [awss3, debug]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -53,6 +58,9 @@ spec:
       labels:
         app: otel-collector
     spec:
+      {{- if and .Values.irsa.enabled .Values.irsa.roleArn }}
+      serviceAccountName: {{ .Values.irsa.serviceAccountName }}
+      {{- end }}
       containers:
         - name: otel-collector
           image: {{ .Values.image.otelCollector }}
@@ -65,6 +73,19 @@ spec:
               name: otlp-http
             - containerPort: 13133
               name: health
+          {{- if and (not .Values.irsa.enabled) .Values.s3.credentialsSecret }}
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.s3.credentialsSecret }}
+                  key: accessKeyId
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.s3.credentialsSecret }}
+                  key: secretAccessKey
+          {{- end }}
           readinessProbe:
             httpGet:
               path: /

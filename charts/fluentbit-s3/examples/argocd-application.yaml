@@ -1,4 +1,4 @@
-# Example Argo CD Application manifest for the BYOC Fluent Bit → S3
+# Example Argo CD Application manifest for the BYOC OTel Collector → S3
 # reference architecture.
 #
 # Option A (static credentials): the K8s Secret `byoc-fluentbit-s3` must
@@ -10,7 +10,7 @@
 #     --from-literal=secretAccessKey=...
 #
 # Option B (IRSA — EKS only): set irsa.enabled=true and irsa.roleArn below.
-# No Secret is needed; the pod picks up the role via a projected token.
+# No Secret is needed; the collector pod picks up the role via a projected token.
 #
 # Apply this Application with:
 #   kubectl apply -f argocd-application.yaml
@@ -32,9 +32,6 @@ spec:
         s3:
           bucket: my-rrpair-archive
           region: us-east-1
-          # Optional: tune flush thresholds for prod workloads.
-          # totalFileSize: 50M
-          # uploadTimeout: 5m
 
         # Option B: uncomment to use IRSA instead of static credentials.
         # irsa:

@@ -19,12 +19,17 @@ data:
       batch: {}
 
     exporters:
-      # Forward to Fluent Bit via OTLP/HTTP. Fluent Bit 3.2+ correctly
-      # expands each OTLP LogRecord into a separate Fluent event with proper
-      # attribute / body / timestamp mapping (3.1.x collapsed an entire
-      # ResourceLogs batch into one record).
-      otlphttp/fluentbit:
-        endpoint: http://fluent-bit.{{ .Release.Namespace }}.svc.cluster.local:4318
+      # Write RRPair objects directly to GCS via the S3-compatible XML API.
+      # The awss3 exporter reads AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY from
+      # the environment; GCS HMAC credentials satisfy those fields transparently.
+      awss3:
+        s3uploader:
+          region: {{ .Values.gcs.region }}
+          s3_bucket: {{ .Values.gcs.bucket }}
+          s3_prefix: byoc
+          endpoint: {{ .Values.gcs.endpoint }}
+          s3_force_path_style: true
+        marshaler: otlp_json
       debug:
         verbosity: basic
 
@@ -38,7 +43,7 @@ data:
         logs:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlphttp/fluentbit, debug]
+          exporters: [awss3, debug]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -67,6 +72,20 @@ spec:
               name: otlp-http
             - containerPort: 13133
               name: health
+          env:
+            # The awss3 exporter uses the standard AWS credential chain.
+            # GCS HMAC keys satisfy the same interface when paired with
+            # endpoint=storage.googleapis.com.
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.gcs.credentialsSecret }}
+                  key: accessKeyId
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.gcs.credentialsSecret }}
+                  key: secretAccessKey
           readinessProbe:
             httpGet:
               path: /
