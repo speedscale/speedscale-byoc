@@ -2,11 +2,11 @@
 
 This reference architecture captures real traffic from your apps, ships it through the Speedscale Forwarder to your own Elasticsearch, and lets you slice it through Kibana — then pull any subset back out as a `proxymock`-replayable directory for tests.
 
-Sibling scenario: [`charts/grafana/`](../grafana/) does the same with Loki + Grafana instead. The two coexist on one cluster (separate `byoc-*` namespaces); pick which receives traffic by repointing the Forwarder's `byoc_otel.otel_endpoint`.
+Sibling scenario: [`charts/grafana/`](../grafana/) does the same with Loki + Grafana instead. The two coexist on one cluster (separate `byoc-*` namespaces); pick which receives traffic by repointing the Forwarder's `byoc_es.otel_endpoint`.
 
 ## Architecture
 
-**Capture.** The Forwarder's `byoc_otel` exporter ships RRPairs as OTLP logs into your own Elasticsearch via the OTel Collector. Kibana sits on top for indexing, Discover, and ad-hoc queries.
+**Capture.** The Forwarder's `byoc_es` exporter ships RRPairs as OTLP logs into your own Elasticsearch via the OTel Collector. Kibana sits on top for indexing, Discover, and ad-hoc queries.
 
 ```mermaid
 flowchart LR
@@ -51,9 +51,9 @@ helm upgrade --install speedscale-operator speedscale/speedscale-operator \
   -n speedscale --create-namespace \
   --set apiKeySecret=speedscale-apikey \
   --set clusterName=<YOUR_CLUSTER_NAME> \
-  --set 'forwarder.exporters.byoc_otel.otel_endpoint=http://otel-collector.byoc-elasticsearch.svc.cluster.local:4317' \
-  --set 'forwarder.exporters.byoc_otel.filter_rule=standard' \
-  --set 'forwarder.exporters.byoc_otel.dlp_config_id=standard'
+  --set 'forwarder.exporters.byoc_es.otel_endpoint=http://otel-collector.byoc-elasticsearch.svc.cluster.local:4317' \
+  --set 'forwarder.exporters.byoc_es.filter_rule=standard' \
+  --set 'forwarder.exporters.byoc_es.dlp_config_id=standard'
 
 # 2. BYOC backend (Elasticsearch + Kibana + OTel Collector)
 helm upgrade --install byoc-elasticsearch speedscale-byoc/elasticsearch \
@@ -77,7 +77,7 @@ kubectl -n speedscale get cm speedscale-forwarder \
   -o jsonpath='{.data.EXPORTERS}' | jq .
 ```
 
-Expected: a JSON object containing `byoc_otel` with `otel_endpoint` pointing at `byoc-elasticsearch`. If `EXPORTERS` is `null`, the Operator values weren't applied.
+Expected: a JSON object containing `byoc_es` with `otel_endpoint` pointing at `byoc-elasticsearch`. If `EXPORTERS` is `null`, the Operator values weren't applied.
 
 **2. OTel Collector is receiving logs**
 
@@ -105,9 +105,9 @@ Open `http://${NODE_IP}:30033`. Go to **Discover** → create a Data View on the
 
 ## Troubleshoot
 
-**`EXPORTERS` is null or missing `byoc_otel`**
+**`EXPORTERS` is null or missing `byoc_es`**
 
-The Operator applied its default values and overwrote the forwarder config. Ensure you passed the `forwarder.exporters.byoc_otel.*` flags on `helm upgrade`. After fixing, restart: `kubectl -n speedscale rollout restart deploy/speedscale-forwarder`.
+The Operator applied its default values and overwrote the forwarder config. Ensure you passed the `forwarder.exporters.byoc_es.*` flags on `helm upgrade`. After fixing, restart: `kubectl -n speedscale rollout restart deploy/speedscale-forwarder`.
 
 **OTel Collector logs show no received records**
 

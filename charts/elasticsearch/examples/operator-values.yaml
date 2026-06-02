@@ -54,7 +54,7 @@ forwarder:
       cpu: "1500m"
       memory: "2Gi"
   exporters:
-    byoc_otel:
+    byoc_es:
       otel_endpoint: "http://otel-collector.byoc-elasticsearch.svc.cluster.local:4317"
       filter_rule: "standard"
       dlp_config_id: "standard"

@@ -8,7 +8,7 @@ data:
     receivers:
       otlp:
         protocols:
-          # The Speedscale forwarder's byoc_otel exporter uses OTLP gRPC
+          # The Speedscale forwarder's byoc_grafana exporter uses OTLP gRPC
           # (lib/exporter/otel_logs.go: otlploggrpc.New). It MUST connect
           # to a gRPC endpoint on 4317; pointing it at HTTP 4318 silently
           # fails forever with no logs reaching Loki.

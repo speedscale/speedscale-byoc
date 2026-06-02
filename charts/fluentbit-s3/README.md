@@ -100,9 +100,9 @@ helm upgrade --install speedscale-operator speedscale/speedscale-operator \
   -n speedscale --create-namespace \
   --set apiKeySecret=speedscale-apikey \
   --set clusterName=<YOUR_CLUSTER_NAME> \
-  --set 'forwarder.exporters.byoc_otel.otel_endpoint=http://otel-collector.byoc-fluentbit-s3.svc.cluster.local:4317' \
-  --set 'forwarder.exporters.byoc_otel.filter_rule=standard' \
-  --set 'forwarder.exporters.byoc_otel.dlp_config_id=standard'
+  --set 'forwarder.exporters.byoc_s3.otel_endpoint=http://otel-collector.byoc-fluentbit-s3.svc.cluster.local:4317' \
+  --set 'forwarder.exporters.byoc_s3.filter_rule=standard' \
+  --set 'forwarder.exporters.byoc_s3.dlp_config_id=standard'
 
 # OTel Collector + Fluent Bit → S3 (static creds)
 helm upgrade --install byoc-fluentbit-s3 speedscale-byoc/fluentbit-s3 \
@@ -132,7 +132,7 @@ kubectl -n speedscale get cm speedscale-forwarder \
   -o jsonpath='{.data.EXPORTERS}' | jq .
 ```
 
-Expected: `byoc_otel` with `otel_endpoint` pointing at `byoc-fluentbit-s3`.
+Expected: `byoc_s3` with `otel_endpoint` pointing at `byoc-fluentbit-s3`.
 
 **2. OTel Collector is receiving logs**
 
@@ -167,9 +167,9 @@ aws s3 cp "$(aws s3 ls s3://my-rrpair-archive --recursive | tail -1 | awk '{prin
 
 ## Troubleshoot
 
-**`EXPORTERS` is null or missing `byoc_otel`**
+**`EXPORTERS` is null or missing `byoc_s3`**
 
-Values weren't applied. Pass `forwarder.exporters.byoc_otel.*` on `helm upgrade`, then restart: `kubectl -n speedscale rollout restart deploy/speedscale-forwarder`.
+Values weren't applied. Pass `forwarder.exporters.byoc_s3.*` on `helm upgrade`, then restart: `kubectl -n speedscale rollout restart deploy/speedscale-forwarder`.
 
 **OTel Collector not receiving records**
 

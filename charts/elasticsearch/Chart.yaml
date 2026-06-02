@@ -5,7 +5,7 @@ description: |
   Single-node demo stack sized for minikube. Pairs with the Speedscale Operator
   chart (installed separately into the `speedscale` namespace); this chart
   installs only the backend that receives RRPair logs from the Forwarder's
-  byoc_otel exporter.
+  byoc_es exporter.
 type: application
 version: 1.0.0
 appVersion: "1.0.0"

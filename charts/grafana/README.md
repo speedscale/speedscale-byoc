@@ -4,7 +4,7 @@ This reference architecture captures real traffic from your apps, ships it throu
 
 ## Architecture
 
-**Capture.** The Forwarder's `byoc_otel` exporter ships RRPairs as OTLP logs into the bundled OTel Collector — no Speedscale Cloud round-trip. The Collector fans that single stream out to two destinations:
+**Capture.** The Forwarder's `byoc_grafana` exporter ships RRPairs as OTLP logs into the bundled OTel Collector — no Speedscale Cloud round-trip. The Collector fans that single stream out to two destinations:
 
 - **Loki** receives the full RRPair logs for endpoint-level drill-down and replay pull-out.
 - **Prometheus** receives derived traffic metrics (using OTel `count` + `sum` connectors) for the dashboard's aggregate panels.
@@ -65,9 +65,9 @@ helm upgrade --install speedscale-operator speedscale/speedscale-operator \
   -n speedscale --create-namespace \
   --set apiKeySecret=speedscale-apikey \
   --set clusterName=<YOUR_CLUSTER_NAME> \
-  --set 'forwarder.exporters.byoc_otel.otel_endpoint=http://otel-collector.byoc-grafana.svc.cluster.local:4317' \
-  --set 'forwarder.exporters.byoc_otel.filter_rule=standard' \
-  --set 'forwarder.exporters.byoc_otel.dlp_config_id=standard'
+  --set 'forwarder.exporters.byoc_grafana.otel_endpoint=http://otel-collector.byoc-grafana.svc.cluster.local:4317' \
+  --set 'forwarder.exporters.byoc_grafana.filter_rule=standard' \
+  --set 'forwarder.exporters.byoc_grafana.dlp_config_id=standard'
 
 # 2. BYOC backend (Loki + Grafana + OTel Collector + Prometheus)
 helm upgrade --install byoc-grafana speedscale-byoc/grafana \
@@ -91,7 +91,7 @@ kubectl -n speedscale get cm speedscale-forwarder \
   -o jsonpath='{.data.EXPORTERS}' | jq .
 ```
 
-Expected output contains `byoc_otel` with your endpoint. If `EXPORTERS` is `null` or missing `byoc_otel`, the Operator values weren't applied — recheck step 1 of the install.
+Expected output contains `byoc_grafana` with your endpoint. If `EXPORTERS` is `null` or missing `byoc_grafana`, the Operator values weren't applied — recheck step 1 of the install.
 
 **2. OTel Collector is receiving logs**
 
@@ -124,9 +124,9 @@ Open `http://${NODE_IP}:30030` (admin/admin). Go to Explore → select the Loki 
 
 ## Troubleshoot
 
-**`EXPORTERS` is null or missing `byoc_otel`**
+**`EXPORTERS` is null or missing `byoc_grafana`**
 
-The Operator applied its default values and overwrote the forwarder config. Ensure you passed `--set forwarder.exporters.byoc_otel.*` (or `-f operator-values.yaml`) on your `helm upgrade`. After fixing, restart the forwarder: `kubectl -n speedscale rollout restart deploy/speedscale-forwarder`.
+The Operator applied its default values and overwrote the forwarder config. Ensure you passed `--set forwarder.exporters.byoc_grafana.*` (or `-f operator-values.yaml`) on your `helm upgrade`. After fixing, restart the forwarder: `kubectl -n speedscale rollout restart deploy/speedscale-forwarder`.
 
 **OTel Collector logs show no received records**
 
