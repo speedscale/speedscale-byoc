@@ -1,0 +1,9 @@
+# Dynatrace preset for the generic BYOC OTLP chart.
+#   helm install byoc-dynatrace speedscale-byoc/otlp -f dynatrace.yaml
+# Create the token Secret first:
+#   kubectl -n byoc-dynatrace create secret generic byoc-dynatrace --from-literal=token=<API-TOKEN>
+otlp:
+  endpoint: https://<env-id>.live.dynatrace.com/api/v2/otlp/v1/logs   # swap .apps->.live; CHANGE <env-id>
+  headerName: Authorization
+  headerPrefix: "Api-Token "
+  tokenSecret: byoc-dynatrace

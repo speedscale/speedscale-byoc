@@ -1,0 +1,17 @@
+# Generic OTLP-export backend. Ships RRPair logs to ANY OTLP-native backend.
+# Pick a destination + auth header per vendor — see examples/. The API
+# token/key lives in a K8s Secret (key: token), created out-of-band.
+otlp:
+  # EXACT OTLP logs endpoint URL (full path). Examples in examples/<vendor>.yaml.
+  endpoint: https://CHANGEME/v1/logs
+  # Auth header name + value prefix. The token is appended from the Secret.
+  #   Dynatrace: headerName=Authorization     headerPrefix="Api-Token "
+  #   Datadog:   headerName=dd-api-key         headerPrefix=""
+  #   Honeycomb: headerName=x-honeycomb-team   headerPrefix=""
+  #   New Relic: headerName=api-key            headerPrefix=""
+  headerName: Authorization
+  headerPrefix: ""
+  tokenSecret: byoc-otlp
+  compression: gzip
+image:
+  otelCollector: otel/opentelemetry-collector-contrib:0.108.0

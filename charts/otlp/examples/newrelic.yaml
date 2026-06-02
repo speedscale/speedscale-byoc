@@ -1,0 +1,9 @@
+# New Relic preset for the generic BYOC OTLP chart.
+#   helm install byoc-newrelic speedscale-byoc/otlp -f newrelic.yaml
+# Create the token Secret first:
+#   kubectl -n byoc-newrelic create secret generic byoc-newrelic --from-literal=token=<NEW-RELIC-LICENSE-KEY>
+otlp:
+  endpoint: https://otlp.nr-data.net/v1/logs
+  headerName: api-key
+  headerPrefix: ""
+  tokenSecret: byoc-newrelic

@@ -10,6 +10,7 @@ Reference architecture Helm charts for Speedscale BYOC (Bring Your Own Cloud) �
 | [`charts/elasticsearch/`](charts/elasticsearch/) | OTel Collector → Elasticsearch → Kibana | Full-text search + Kibana Discover |
 | [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | OTel Collector → Fluent Bit → GCS | Durable GCS archive + BigQuery |
 | [`charts/fluentbit-s3/`](charts/fluentbit-s3/) | OTel Collector → Fluent Bit → S3 | Durable S3 archive + Athena |
+| [`charts/otlp/`](charts/otlp/) | OTel Collector → OTLP/HTTP (`otlphttp`) | Any OTLP-native vendor — Dynatrace, Datadog, Honeycomb, New Relic, … |
 
 All scenarios coexist in separate namespaces on the same cluster. Point the Forwarder's `byoc_<backend>` exporter at the backend's collector to choose where traffic goes.
 
@@ -42,7 +43,8 @@ speedscale-byoc/
 │   ├── grafana/          # OTel Collector + Loki + Prometheus + Grafana
 │   ├── elasticsearch/    # Elasticsearch + Kibana + OTel Collector
 │   ├── fluentbit-gcs/    # OTel Collector + Fluent Bit → Google Cloud Storage
-│   └── fluentbit-s3/     # OTel Collector + Fluent Bit → Amazon S3
+│   ├── fluentbit-s3/     # OTel Collector + Fluent Bit → Amazon S3
+│   └── otlp/             # OTel Collector → any OTLP-native vendor (otlphttp)
 └── scripts/
     ├── loki-gather.py    # Pull RRPairs from Loki → proxymock snapshot
     ├── es-gather.py      # Pull RRPairs from Elasticsearch → proxymock snapshot
@@ -103,16 +105,34 @@ is deliberate: it gives **per-destination DLP/filtering**, isolates one backend'
 failures from another's, and lets you add or remove a backend without touching
 the others.
 
-### Adding a new backend (e.g. Dynatrace)
+### Adding a new backend
 
-1. Add `charts/<backend>/` with an OTel Collector whose pipeline exports **only**
-   to that backend (copy the closest existing chart as a template).
+How you add a backend depends on whether it speaks OTLP natively:
+
+**OTLP-native vendor** (Dynatrace, Datadog, Honeycomb, New Relic, …) — do
+**not** add a chart. They all share the identical Collector + `otlphttp`
+exporter; only the logs endpoint URL and the auth header differ.
+
+1. `helm install byoc-<vendor> speedscale-byoc/otlp` with a values preset
+   (endpoint + auth header + token Secret) — see
+   [`charts/otlp/examples/`](charts/otlp/examples/).
+2. Add one `forwarder.exporters.byoc_<vendor>` entry pointed at that
+   Collector's Service, with its own `dlp_config_id` / `filter_rule`.
+3. If the vendor isn't already covered, add one `examples/<vendor>.yaml`
+   preset to `charts/otlp/` — no template change needed.
+
+**Non-OTLP backend** (object storage, classic Loki/Elasticsearch) — add a
+dedicated chart with the appropriate exporter (`awss3` / `loki` /
+`elasticsearch`):
+
+1. Add `charts/<backend>/` with an OTel Collector whose pipeline exports
+   **only** to that backend (copy the closest existing chart as a template).
 2. Add one `forwarder.exporters.byoc_<backend>` entry pointed at the new
    Collector's Service, with its own `dlp_config_id` / `filter_rule`.
 3. Do **not** add the backend to an existing Collector's `exporters` list.
 
-That's the whole recipe — charts stay independent and the Forwarder wiring is
-one entry per backend.
+Either way the Forwarder wiring is one entry per backend, and backends stay
+independent.
 
 ## Replay captured traffic with proxymock
 

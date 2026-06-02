@@ -1,0 +1,35 @@
+apiVersion: v2
+name: otlp
+description: |
+  Speedscale BYOC reference architecture — OTel Collector → any OTLP-native
+  observability backend (Dynatrace, Datadog, Honeycomb, New Relic, …).
+  One parameterized chart configured by values: every OTLP-native vendor uses
+  the identical Collector with an `otlphttp` exporter — only the logs endpoint
+  URL and the auth header differ, so a per-vendor values preset (see examples/)
+  is all it takes. Pairs with the Speedscale Operator chart (installed
+  separately into the `speedscale` namespace); this chart installs only the
+  in-cluster Collector that receives RRPairs from the Forwarder's
+  byoc_<vendor> exporter and ships them onward via OTLP/HTTP.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - speedscale
+  - byoc
+  - otlp
+  - opentelemetry
+  - dynatrace
+  - datadog
+  - honeycomb
+  - newrelic
+  - logs
+home: https://github.com/speedscale/speedscale-byoc
+maintainers:
+  - name: Speedscale
+    email: support@speedscale.com
+    url: https://speedscale.com
+annotations:
+  artifacthub.io/category: monitoring-logging
+  artifacthub.io/license: Apache-2.0
+sources:
+  - https://github.com/speedscale/speedscale-byoc/tree/main/charts/otlp

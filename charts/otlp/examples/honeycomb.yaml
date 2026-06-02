@@ -1,0 +1,9 @@
+# Honeycomb preset for the generic BYOC OTLP chart.
+#   helm install byoc-honeycomb speedscale-byoc/otlp -f honeycomb.yaml
+# Create the token Secret first:
+#   kubectl -n byoc-honeycomb create secret generic byoc-honeycomb --from-literal=token=<HONEYCOMB-API-KEY>
+otlp:
+  endpoint: https://api.honeycomb.io/v1/logs
+  headerName: x-honeycomb-team
+  headerPrefix: ""
+  tokenSecret: byoc-honeycomb
