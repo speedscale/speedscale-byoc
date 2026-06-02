@@ -46,8 +46,13 @@ import re
 import subprocess
 import sys
 import uuid as uuid_mod
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# Concurrency for object downloads. Each worker shells out to `gcloud storage
+# cat`, so this is I/O-bound — a healthy pool hides per-object CLI startup.
+DOWNLOAD_WORKERS = 16
 
 
 # ─── time parsing ───────────────────────────────────────────────────────────
@@ -83,6 +88,7 @@ def hour_partitions(start: datetime, end: datetime, prefix: str = "") -> list[st
       ['year=2026/month=05/day=25/hour=14/',
        'year=2026/month=05/day=25/hour=15/']
 
+    Used for the legacy Fluent Bit layout, which has no minute= sub-partition.
     An optional leading prefix (e.g. 'byoc/') is prepended to each entry.
     """
     start_h = start.replace(minute=0, second=0, microsecond=0)
@@ -95,6 +101,32 @@ def hour_partitions(start: datetime, end: datetime, prefix: str = "") -> list[st
             f"day={cur.day:02d}/hour={cur.hour:02d}/"
         )
         cur += timedelta(hours=1)
+    return out
+
+
+def minute_partitions(start: datetime, end: datetime, prefix: str = "") -> list[str]:
+    """Return Hive-style prefix strings covering every *minute* the window touches.
+
+    The awss3 exporter writes objects under
+      <prefix>year=YYYY/month=MM/day=DD/hour=HH/minute=MM/logs_*.json
+    so pruning to just the minutes in [start, end] avoids listing/downloading
+    the whole ~1300-object hour partition when the caller only wants a few
+    minutes of traffic.
+
+    e.g. window 2026-05-25T14:58 → 2026-05-25T15:02 yields five prefixes:
+      .../hour=14/minute=58/, .../hour=14/minute=59/,
+      .../hour=15/minute=00/, .../hour=15/minute=01/, .../hour=15/minute=02/
+    """
+    start_m = start.replace(second=0, microsecond=0)
+    end_m = end.replace(second=0, microsecond=0)
+    out: list[str] = []
+    cur = start_m
+    while cur <= end_m:
+        out.append(
+            f"{prefix}year={cur.year:04d}/month={cur.month:02d}/"
+            f"day={cur.day:02d}/hour={cur.hour:02d}/minute={cur.minute:02d}/"
+        )
+        cur += timedelta(minutes=1)
     return out
 
 
@@ -412,10 +444,12 @@ def main() -> int:
         return 2
 
     # Enumerate both legacy (no prefix) and current (byoc/ prefix) partitions.
-    # The awss3 exporter writes under byoc/year=.../minute=...; the legacy
-    # Fluent Bit s3 output wrote directly under year=.../hour=...
+    # The awss3 exporter writes under byoc/year=.../hour=HH/minute=MM/, so we
+    # prune to just the minutes in the window. The legacy Fluent Bit s3 output
+    # wrote directly under year=.../hour=HH/ (no minute= level), so it still
+    # uses hour-granularity prefixes.
     legacy_partitions = hour_partitions(start, end, prefix="")
-    byoc_partitions = hour_partitions(start, end, prefix="byoc/")
+    byoc_partitions = minute_partitions(start, end, prefix="byoc/")
     all_partitions = legacy_partitions + byoc_partitions
 
     print(f"gcs-gather: gs://{args.bucket}", file=sys.stderr)
@@ -423,15 +457,17 @@ def main() -> int:
           f"({(end - start).total_seconds():.0f}s)", file=sys.stderr)
     print(f"  partitions: {len(all_partitions)} prefix(es) checked", file=sys.stderr)
 
-    # Enumerate objects in each partition
+    # Enumerate objects across all partitions, listing concurrently. With
+    # minute-level pruning there can be dozens of small prefixes; a sequential
+    # `gcloud storage ls` per prefix dominates wall-clock otherwise.
     all_objs: list[str] = []
-    for prefix in all_partitions:
-        try:
-            objs = list_objects(args.bucket, prefix)
-        except RuntimeError as e:
-            print(f"error: {e}", file=sys.stderr)
-            return 1
-        all_objs.extend(objs)
+    try:
+        with ThreadPoolExecutor(max_workers=DOWNLOAD_WORKERS) as pool:
+            for objs in pool.map(lambda p: list_objects(args.bucket, p), all_partitions):
+                all_objs.extend(objs)
+    except RuntimeError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
     print(f"  objects:    {len(all_objs)}", file=sys.stderr)
 
     if args.dry_run:
@@ -445,15 +481,22 @@ def main() -> int:
         print("hint: widen --start, or check that the bucket is receiving traffic", file=sys.stderr)
         return 1
 
-    # Stream every object and parse records.
+    # Download every object concurrently, then parse records.
     # .json.gz  → legacy gzipped NDJSON (Fluent Bit s3 output)
     # .json     → current OTLP-JSON (awss3 exporter, chart >= 2.0.0)
-    matched: list[dict] = []
-    for gs_url in all_objs:
+    def _fetch(gs_url: str):
         try:
-            raw = download_object(gs_url)
+            return gs_url, download_object(gs_url)
         except RuntimeError as e:
-            print(f"warning: {e}", file=sys.stderr)
+            return gs_url, e
+
+    matched: list[dict] = []
+    with ThreadPoolExecutor(max_workers=DOWNLOAD_WORKERS) as pool:
+        results = list(pool.map(_fetch, all_objs))
+
+    for gs_url, raw in results:
+        if isinstance(raw, Exception):
+            print(f"warning: {raw}", file=sys.stderr)
             continue
 
         if gs_url.endswith(".json.gz"):
