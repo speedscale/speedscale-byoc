@@ -1,0 +1,30 @@
+apiVersion: v2
+name: azureblob
+description: |
+  Speedscale BYOC → OTel Collector → Azure Blob Storage. The collector's azureblob
+  exporter writes OTLP-JSON blobs to your container; no in-cluster storage.
+  Pairs with the Speedscale Operator chart (installed separately into the `speedscale`
+  namespace); this chart installs only the in-cluster pipeline that receives RRPairs
+  from the Forwarder's byoc_azure exporter and ships them to long-term object storage.
+type: application
+version: 1.0.0
+appVersion: "0.123.0"
+keywords:
+  - speedscale
+  - byoc
+  - azure
+  - azure-blob-storage
+  - opentelemetry
+  - azureblob
+  - archive
+  - data-lake
+home: https://github.com/speedscale/speedscale-byoc
+maintainers:
+  - name: Speedscale
+    email: support@speedscale.com
+    url: https://speedscale.com
+annotations:
+  artifacthub.io/category: infrastructure
+  artifacthub.io/license: Apache-2.0
+sources:
+  - https://github.com/speedscale/speedscale-byoc/tree/main/charts/azureblob

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Speedscale BYOC OTel Collector → Azure Blob Storage chart values",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["azure"],
+  "properties": {
+    "azure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "container", "connectionStringSecret"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "minLength": 1,
+          "description": "Storage account blob URL (e.g. https://<account>.blob.core.windows.net/)"
+        },
+        "container": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Blob container to write RRPairs into — must exist before installing"
+        },
+        "connectionStringSecret": {
+          "type": "string",
+          "minLength": 1,
+          "description": "K8s Secret name holding the Azure connection string (key: connectionString)"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "otelCollector": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Must be opentelemetry-collector-contrib (azureblob is contrib-only, present from v0.121.0)"
+        }
+      }
+    }
+  }
+}
