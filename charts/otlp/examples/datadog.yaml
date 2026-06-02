@@ -1,0 +1,9 @@
+# Datadog preset for the generic BYOC OTLP chart.
+#   helm install byoc-datadog speedscale-byoc/otlp -f datadog.yaml
+# Create the token Secret first:
+#   kubectl -n byoc-datadog create secret generic byoc-datadog --from-literal=token=<DD-API-KEY>
+otlp:
+  endpoint: https://<DATADOG-OTLP-LOGS-INTAKE-URL>   # site-specific; see docs.datadoghq.com OTLP logs intake
+  headerName: dd-api-key
+  headerPrefix: ""
+  tokenSecret: byoc-datadog

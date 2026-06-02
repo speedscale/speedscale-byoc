@@ -1,0 +1,12 @@
+# Patterns to ignore when building packages.
+# This follows the same rules as .gitignore.
+
+# Don't bundle examples or changelog — they're for GitHub/docs browsing only.
+examples/
+CHANGELOG.md
+
+# OS and editor noise
+.DS_Store
+.idea/
+*.swp
+*.swo

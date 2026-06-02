@@ -1,0 +1,55 @@
+# Example Argo CD Application manifest for the BYOC OTel Collector → OTLP
+# backend reference architecture (here: Dynatrace; swap the values block for
+# any vendor preset in this directory).
+#
+# Prerequisite: the K8s Secret holding the API token (data key `token`) must
+# already exist in the destination namespace. Create it out-of-band, NOT from
+# Argo, so the credential never lives in git or Argo's manifest cache:
+#   kubectl create namespace byoc-dynatrace
+#   kubectl -n byoc-dynatrace create secret generic byoc-dynatrace \
+#     --from-literal=token=<API-TOKEN>
+#
+# Apply this Application with:
+#   kubectl apply -f argocd-application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: byoc-dynatrace
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/speedscale/speedscale-byoc.git
+    targetRevision: main
+    path: charts/otlp
+    helm:
+      # Required overrides — your vendor's endpoint + auth header + Secret.
+      # Mirror examples/<vendor>.yaml. Everything else has defaults in values.yaml.
+      values: |
+        otlp:
+          endpoint: https://<env-id>.live.dynatrace.com/api/v2/otlp/v1/logs
+          headerName: Authorization
+          headerPrefix: "Api-Token "
+          tokenSecret: byoc-dynatrace
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: byoc-dynatrace
+
+  syncPolicy:
+    automated:
+      prune: true       # delete resources removed from git
+      selfHeal: true    # revert drift back to git
+    syncOptions:
+      # Argo creates the namespace, but you must still create the token
+      # Secret out-of-band before sync succeeds.
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        maxDuration: 5m
+        factor: 2

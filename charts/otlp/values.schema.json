@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Speedscale BYOC OTel Collector → OTLP backend chart values",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["otlp"],
+  "properties": {
+    "otlp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endpoint", "headerName", "tokenSecret"],
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "minLength": 1,
+          "description": "EXACT OTLP logs endpoint URL (full path), e.g. https://<env-id>.live.dynatrace.com/api/v2/otlp/v1/logs"
+        },
+        "headerName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Auth header name (Authorization, dd-api-key, x-honeycomb-team, api-key, …)"
+        },
+        "headerPrefix": {
+          "type": "string",
+          "description": "Value prefix prepended to the token (e.g. 'Api-Token ' for Dynatrace; empty for most)"
+        },
+        "tokenSecret": {
+          "type": "string",
+          "minLength": 1,
+          "description": "K8s Secret name holding the API token/key under data key 'token'"
+        },
+        "compression": {
+          "type": "string",
+          "enum": ["gzip", "none"],
+          "description": "OTLP/HTTP request compression"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "otelCollector": {
+          "type": "string",
+          "minLength": 1,
+          "description": "OTel Collector image (contrib distribution recommended)"
+        }
+      }
+    }
+  }
+}
