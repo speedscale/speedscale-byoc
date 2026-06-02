@@ -43,12 +43,37 @@ spec:
                     \"delete\": { \"min_age\": \"${RETENTION}\", \"actions\": { \"delete\": {} } }
                   } } }"
 
+              # The template also flattens the unbounded dynamic-key objects
+              # (tokenList, headers, tags). Without this they map one ES field
+              # per unique key and blow the 1000-field limit, so ES rejects the
+              # majority of RRPairs with document_parsing_exception. flattened
+              # stores each object as a single field (source untouched, so
+              # gather/replay still see full headers); the field count stays
+              # bounded. total_fields.limit is also raised as a safety margin.
               echo "==> PUT index template for ${INDEX}*"
               curl -sf -X PUT "$ES/_index_template/${INDEX}" \
                 -H 'Content-Type: application/json' -d "{
                   \"index_patterns\": [\"${INDEX}*\"],
                   \"priority\": 200,
-                  \"template\": { \"settings\": { \"index.lifecycle.name\": \"${INDEX}-retention\" } }
+                  \"template\": {
+                    \"settings\": {
+                      \"index.lifecycle.name\": \"${INDEX}-retention\",
+                      \"index.mapping.total_fields.limit\": 2000
+                    },
+                    \"mappings\": {
+                      \"properties\": { \"Body\": { \"properties\": {
+                        \"tokenList\": { \"type\": \"flattened\" },
+                        \"tags\":      { \"type\": \"flattened\" },
+                        \"http\": { \"properties\": {
+                          \"req\": { \"properties\": { \"headers\": { \"type\": \"flattened\" } } },
+                          \"res\": { \"properties\": { \"headers\": { \"type\": \"flattened\" } } }
+                        } }
+                      } } },
+                      \"dynamic_templates\": [
+                        { \"any_headers\": { \"match\": \"headers\", \"match_mapping_type\": \"object\", \"mapping\": { \"type\": \"flattened\" } } }
+                      ]
+                    }
+                  }
                 }"
 
               echo "==> attach policy to existing ${INDEX} index (if present)"
