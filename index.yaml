@@ -180,4 +180,43 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/grafana-1.0.0/grafana-1.0.0.tgz
     version: 1.0.0
-generated: "2026-06-01T12:27:42.118191471Z"
+  otlp:
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-06-02T17:30:52.066896506Z"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → any OTLP-native
+      observability backend (Dynatrace, Datadog, Honeycomb, New Relic, …). One parameterized
+      chart configured by values: every OTLP-native vendor uses the identical Collector
+      with an `otlphttp` exporter — only the logs endpoint URL and the auth header
+      differ, so a per-vendor values preset (see examples/) is all it takes. Pairs
+      with the Speedscale Operator chart (installed separately into the `speedscale`
+      namespace); this chart installs only the in-cluster Collector that receives
+      RRPairs from the Forwarder''s byoc_<vendor> exporter and ships them onward via
+      OTLP/HTTP. '
+    digest: ac15ef0bbcab796f34a4663efa0c355679a85289a0f0e6d43775a1e5e8820254
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - otlp
+    - opentelemetry
+    - dynatrace
+    - datadog
+    - honeycomb
+    - newrelic
+    - logs
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: otlp
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/otlp
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/otlp-1.0.0/otlp-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-06-02T17:30:52.066911554Z"
