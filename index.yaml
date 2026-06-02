@@ -1,5 +1,40 @@
 apiVersion: v1
 entries:
+  azureblob:
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 0.153.0
+    created: "2026-06-02T22:24:11.301569421Z"
+    description: 'Speedscale BYOC → OTel Collector → Azure Blob Storage. The collector''s
+      azureblob exporter writes OTLP-JSON blobs to your container; no in-cluster storage.
+      Pairs with the Speedscale Operator chart (installed separately into the `speedscale`
+      namespace); this chart installs only the in-cluster pipeline that receives RRPairs
+      from the Forwarder''s byoc_azure exporter and ships them to long-term object
+      storage. '
+    digest: 5fd8cf007d1e0c2fcdd58c76bdfb3a3f4aa3b15cd0f8e79a715a70d4ec4f4129
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - azure
+    - azure-blob-storage
+    - opentelemetry
+    - azureblob
+    - archive
+    - data-lake
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: azureblob
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/azureblob
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/azureblob-1.0.0/azureblob-1.0.0.tgz
+    version: 1.0.0
   elasticsearch:
   - annotations:
       artifacthub.io/category: infrastructure
@@ -219,4 +254,4 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/otlp-1.0.0/otlp-1.0.0.tgz
     version: 1.0.0
-generated: "2026-06-02T17:30:52.066911554Z"
+generated: "2026-06-02T22:24:11.525358487Z"
