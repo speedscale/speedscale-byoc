@@ -20,10 +20,10 @@ data:
 
     exporters:
       # Write RRPair blobs directly to Azure Blob Storage via the collector's
-      # native azureblob exporter. connection_string overrides url, but both
+      # native azure_blob exporter. connection_string overrides url, but both
       # are set; format json = OTLP-JSON blobs. The ${env:...} refs are kept
       # literal so the collector expands them at runtime from the pod env.
-      azureblob:
+      azure_blob:
         url: ${env:AZURE_BLOB_URL}
         auth:
           type: connection_string
@@ -44,7 +44,7 @@ data:
         logs:
           receivers: [otlp]
           processors: [batch]
-          exporters: [azureblob, debug]
+          exporters: [azure_blob, debug]
 ---
 apiVersion: apps/v1
 kind: Deployment

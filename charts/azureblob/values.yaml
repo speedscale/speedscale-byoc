@@ -27,8 +27,9 @@ azure:
 # Image pin. Must be opentelemetry-collector-contrib (azureblob is a contrib exporter).
 #
 # NOTE: pinned NEWER than the other charts (0.108.0) because the azureblob
-# exporter (alpha) is only in recent contrib releases. The exporter first
-# shipped in contrib v0.121.0; this pins 0.123.0, a released tag that
-# definitely includes it.
+# exporter (alpha) is only built into recent published contrib images. The
+# exporter source exists since v0.121.0 but is NOT compiled into the
+# otelcol-contrib image until ~v0.153.0 — verified live: 0.123.0 fails with
+# "unknown type: azureblob". 0.153.0 includes it.
 image:
-  otelCollector: otel/opentelemetry-collector-contrib:0.123.0
+  otelCollector: otel/opentelemetry-collector-contrib:0.153.0

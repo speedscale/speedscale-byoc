@@ -8,7 +8,7 @@ description: |
   from the Forwarder's byoc_azure exporter and ships them to long-term object storage.
 type: application
 version: 1.0.0
-appVersion: "0.123.0"
+appVersion: "0.153.0"
 keywords:
   - speedscale
   - byoc
