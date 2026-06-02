@@ -16,3 +16,11 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Claude Code
+.claude/
+
+# Generated output
+proxymock/
+scripts/__pycache__/
+**/__pycache__/
