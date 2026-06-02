@@ -28,7 +28,8 @@
       "properties": {
         "elasticsearch": { "type": "string", "minLength": 1 },
         "kibana":        { "type": "string", "minLength": 1 },
-        "otelCollector": { "type": "string", "minLength": 1 }
+        "otelCollector": { "type": "string", "minLength": 1 },
+        "curl":          { "type": "string", "minLength": 1, "description": "Image for the ILM bootstrap hook Job" }
       }
     },
     "elasticsearch": {
@@ -45,6 +46,11 @@
       "type": "string",
       "minLength": 1,
       "description": "Elasticsearch index name for RRPair logs"
+    },
+    "retentionDays": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Days to retain RRPair data via ILM before deletion (0 disables the bootstrap)"
     }
   }
 }

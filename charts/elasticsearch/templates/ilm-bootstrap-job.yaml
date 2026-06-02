@@ -1,0 +1,60 @@
+{{- if gt (int .Values.retentionDays) 0 }}
+# Bootstraps a {{ .Values.retentionDays }}-day ILM retention policy + index
+# template so RRPair data ages out automatically and ES disk stays bounded.
+# Runs as a Helm post-install/post-upgrade hook; idempotent (PUTs are upserts).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-ilm-bootstrap
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: ilm-bootstrap
+          image: {{ .Values.image.curl | default "curlimages/curl:8.8.0" }}
+          env:
+            - name: ES
+              value: "http://elasticsearch.{{ .Release.Namespace }}.svc.cluster.local:9200"
+            - name: INDEX
+              value: "{{ .Values.logsIndex }}"
+            - name: RETENTION
+              value: "{{ .Values.retentionDays }}d"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              echo "waiting for Elasticsearch at $ES ..."
+              until curl -sf "$ES/_cluster/health?wait_for_status=yellow&timeout=5s" >/dev/null; do sleep 3; done
+
+              echo "==> PUT ILM policy ${INDEX}-${RETENTION}-delete"
+              curl -sf -X PUT "$ES/_ilm/policy/${INDEX}-retention" \
+                -H 'Content-Type: application/json' -d "{
+                  \"policy\": { \"phases\": {
+                    \"hot\":    { \"min_age\": \"0ms\", \"actions\": { \"set_priority\": { \"priority\": 100 } } },
+                    \"delete\": { \"min_age\": \"${RETENTION}\", \"actions\": { \"delete\": {} } }
+                  } } }"
+
+              echo "==> PUT index template for ${INDEX}*"
+              curl -sf -X PUT "$ES/_index_template/${INDEX}" \
+                -H 'Content-Type: application/json' -d "{
+                  \"index_patterns\": [\"${INDEX}*\"],
+                  \"priority\": 200,
+                  \"template\": { \"settings\": { \"index.lifecycle.name\": \"${INDEX}-retention\" } }
+                }"
+
+              echo "==> attach policy to existing ${INDEX} index (if present)"
+              curl -s -X PUT "$ES/${INDEX}/_settings" \
+                -H 'Content-Type: application/json' \
+                -d "{ \"index.lifecycle.name\": \"${INDEX}-retention\" }" || true
+
+              echo "ILM retention bootstrap complete (${RETENTION})."
+{{- end }}

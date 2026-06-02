@@ -26,6 +26,11 @@ image:
 elasticsearch:
   javaOpts: "-Xms512m -Xmx512m"
 
-# Index name for RRPair logs. ILM/rollover deliberately not configured —
-# demo data ages out via a `delete_by_query` cron or manual cleanup.
+# Index name for RRPair logs.
 logsIndex: speedscale-rrpair
+
+# Retention. A post-install Helm hook bootstraps an ILM policy that deletes
+# RRPair data older than retentionDays, plus an index template so the index
+# (and any auto-recreated one) inherits it — keeps ES disk bounded without a
+# cron. Set to 0 to disable the bootstrap (manage retention yourself).
+retentionDays: 7
