@@ -1,0 +1,35 @@
+# BYOC OTel Collector → Azure Blob Storage chart values.
+#
+# This chart installs ONLY the in-cluster shipping pipeline (OTel Collector
+# with the native azureblob exporter). RRPair logs land as OTLP-JSON blobs in
+# your storage account's container — no in-cluster storage.
+#
+# Pipeline: Forwarder --OTLP gRPC--> OTel Collector --azureblob--> Azure Blob
+#
+# The Speedscale Operator + Forwarder are installed separately via the
+# upstream `speedscale/speedscale-operator` chart, configured to ship RRPairs
+# to this chart's OTel Collector via:
+#   byoc_azure.otel_endpoint: http://otel-collector.<namespace>.svc.cluster.local:4317
+
+# Azure Blob target. The OTel Collector writes RRPair logs as OTLP-JSON blobs
+# to your storage account's container via the azureblob exporter.
+# Provision a storage account + container, then create the Secret out-of-band:
+#   kubectl -n <ns> create secret generic byoc-azureblob \
+#     --from-literal=connectionString='DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net'
+azure:
+  # Storage account blob URL (connection_string overrides this, but set it).
+  url: https://CHANGEME.blob.core.windows.net/
+  # Container to write RRPairs into.
+  container: byoc
+  # K8s Secret holding the connection string (key: connectionString). Out-of-band.
+  connectionStringSecret: byoc-azureblob
+
+# Image pin. Must be opentelemetry-collector-contrib (azureblob is a contrib exporter).
+#
+# NOTE: pinned NEWER than the other charts (0.108.0) because the azureblob
+# exporter (alpha) is only built into recent published contrib images. The
+# exporter source exists since v0.121.0 but is NOT compiled into the
+# otelcol-contrib image until ~v0.153.0 — verified live: 0.123.0 fails with
+# "unknown type: azureblob". 0.153.0 includes it.
+image:
+  otelCollector: otel/opentelemetry-collector-contrib:0.153.0

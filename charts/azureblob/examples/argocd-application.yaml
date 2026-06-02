@@ -1,0 +1,52 @@
+# Example Argo CD Application manifest for the BYOC OTel Collector → Azure Blob
+# Storage reference architecture.
+#
+# Prerequisite: the K8s Secret `byoc-azureblob` (Azure connection string) must
+# already exist in the destination namespace. Create it out-of-band, NOT from
+# Argo, so credentials never live in git or Argo's manifest cache:
+#   kubectl create namespace byoc-azureblob
+#   kubectl -n byoc-azureblob create secret generic byoc-azureblob \
+#     --from-literal=connectionString='DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net'
+#
+# Apply this Application with:
+#   kubectl apply -f argocd-application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: byoc-azureblob
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/speedscale/speedscale-byoc.git
+    targetRevision: main
+    path: charts/azureblob
+    helm:
+      # Required overrides — your storage account URL + container. Everything
+      # else has sensible defaults in values.yaml.
+      values: |
+        azure:
+          url: https://mystorageacct.blob.core.windows.net/
+          container: byoc
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: byoc-azureblob
+
+  syncPolicy:
+    automated:
+      prune: true       # delete resources removed from git
+      selfHeal: true    # revert drift back to git
+    syncOptions:
+      # Argo creates the namespace, but you must still create the
+      # byoc-azureblob Secret out-of-band before sync succeeds.
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        maxDuration: 5m
+        factor: 2
