@@ -78,14 +78,19 @@ def parse_time(s: str, *, now: datetime | None = None) -> datetime:
 # ─── LogQL construction ─────────────────────────────────────────────────────
 
 
-# Fields we extract from the JSON body so LogQL filter pipeline stages can act
-# on them. Keeping this list minimal (vs the ~60 fields in a full RRPair) is
-# what keeps Loki under its 500-series cardinality cap on metric/aggregate
-# queries — same lesson the Grafana Speedscale Traffic dashboard learned.
-KEEP_FIELDS = [
-    "cluster", "service", "namespace",
+# Body fields we parse out of the JSON log line so the LogQL filter stages
+# (`| body_status=~...`, `| body_direction=...`) can act on them server-side.
+#
+# This is a FILTER-ONLY concern. We deliberately do NOT `| keep` these fields:
+# `keep` prunes the extracted label set, and on some Loki configurations it
+# also rewrites the returned log line down to just the kept fields — which
+# silently drops the rest of the RRPair (the full `http` req/res with headers
+# and bodies). The written RRPair must be the COMPLETE log line value, since
+# the Loki log line literally IS the full RRPair JSON the forwarder emitted.
+# So `| json` extracts the body_* fields for filtering, the filter stages run
+# server-side, and `query_loki` writes the untouched original line.
+BODY_FILTER_FIELDS = [
     "body_command", "body_status", "body_location", "body_direction",
-    "body_uuid", "body_ts", "body_duration",
 ]
 
 
@@ -94,7 +99,9 @@ def build_logql(args: argparse.Namespace) -> str:
 
     Stream-label selectors (cluster/service/namespace) go inside the {…} matcher
     so Loki uses its index — much cheaper than post-filter. Body fields require
-    `| json` parsing and then post-filter stages.
+    `| json` parsing and then post-filter stages. The `| json` parse is used for
+    server-side FILTERING only; we never `| keep`, so the returned log line stays
+    the full RRPair (see BODY_FILTER_FIELDS).
     """
     if args.logql:
         return args.logql
@@ -108,8 +115,7 @@ def build_logql(args: argparse.Namespace) -> str:
     if not stream:
         stream.append('service=~".+"')
 
-    parser_stage = "| json | keep " + ", ".join(KEEP_FIELDS)
-    pipeline = [parser_stage]
+    pipeline = ["| json"]
 
     if args.method:
         pipeline.append(f'| body_command=~"{args.method}"')
@@ -126,30 +132,54 @@ def build_logql(args: argparse.Namespace) -> str:
 # ─── Loki query ─────────────────────────────────────────────────────────────
 
 
-def query_loki(loki_url: str, logql: str, start: datetime, end: datetime, limit: int) -> list[tuple[dict, dict]]:
-    """Single query_range call against Loki.
+# Loki caps a single query_range gRPC response at ~4 MB (the inter-component
+# `grpc_server_max_recv_msg_size`, default 4194304). A full RRPair carries the
+# entire http req/res with headers + bodies, so as few as ~30 of them blow the
+# cap and Loki replies `HTTP 500 ... ResourceExhausted ... larger than max`.
+# A single query therefore can't return a large extract.
+#
+# We page with a timestamp cursor: each call asks for at most _PAGE_LINES log
+# lines (direction=backward, newest first), then the next call moves `end` to
+# just before the oldest line we got, until we have `limit` records or the
+# window is exhausted. _PAGE_LINES is small enough that a page of full RRPairs
+# stays well under the cap; if a page still trips it (unusually fat RRPairs),
+# we halve the page size for that call and retry.
+_RESOURCE_EXHAUSTED = "ResourceExhausted"
 
-    Returns a list of (stream_labels, body) pairs — one per matching log line.
-    `body` is the RRPair JSON object originally emitted by the forwarder; the
-    stream labels are the OTEL resource attrs that came in as Loki indexed
-    labels (cluster, service, namespace, exporter).
+# Lines per page. ~25 full RRPairs is comfortably under 4 MB in practice; small
+# enough to be safe, large enough to keep the call count reasonable.
+_PAGE_LINES = 25
 
-    Pagination/auto-windowing for big time ranges is a phase-2 improvement;
-    today we trust the caller to keep windows reasonable (default 15m).
+
+def _rrpair_id(body: dict) -> str:
+    """Stable identity for dedup across page boundaries. RRPairs carry a `uuid`
+    (and `body_uuid` in the parsed form); fall back to a structural digest so a
+    missing uuid never collapses distinct records.
     """
-    base = loki_url.rstrip("/")
-    api = f"{base}/loki/api/v1/query_range"
+    for k in ("uuid", "body_uuid"):
+        v = body.get(k)
+        if isinstance(v, str) and v:
+            return v
+    return json.dumps(body, sort_keys=True, separators=(",", ":"))
+
+
+def _query_page(api: str, logql: str, start_ns: int, end_ns: int, page_lines: int) -> list[tuple[int, dict, dict]]:
+    """One query_range call over [start_ns, end_ns]. Returns a list of
+    (ts_ns, stream_labels, body) triples ordered newest-first. Raises
+    RuntimeError on transport/Loki errors; the ResourceExhausted cap surfaces
+    as an HTTP 500 the caller recovers from by shrinking page_lines.
+    """
     qs = urllib.parse.urlencode({
         "query":     logql,
-        "start":     f"{int(start.timestamp() * 1_000_000_000)}",
-        "end":       f"{int(end.timestamp()   * 1_000_000_000)}",
-        "limit":     str(limit),
+        "start":     str(start_ns),
+        "end":       str(end_ns),
+        "limit":     str(page_lines),
         "direction": "backward",  # newest first; matches Speedscale cloud snapshot ordering
     })
     url = f"{api}?{qs}"
 
     try:
-        with urllib.request.urlopen(url, timeout=30) as r:
+        with urllib.request.urlopen(url, timeout=120) as r:
             payload = json.load(r)
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
@@ -160,10 +190,10 @@ def query_loki(loki_url: str, logql: str, start: datetime, end: datetime, limit:
     if payload.get("status") != "success":
         raise RuntimeError(f"Loki returned non-success: {payload!r}")
 
-    out: list[tuple[dict, dict]] = []
+    out: list[tuple[int, dict, dict]] = []
     for stream in payload.get("data", {}).get("result", []):
         labels = stream.get("stream", {})
-        for _ts_ns, line in stream.get("values", []):
+        for ts_ns, line in stream.get("values", []):
             try:
                 rec = json.loads(line)
             except json.JSONDecodeError:
@@ -174,7 +204,79 @@ def query_loki(loki_url: str, logql: str, start: datetime, end: datetime, limit:
             body = rec.get("body")
             if not isinstance(body, dict):
                 continue
+            out.append((int(ts_ns), labels, body))
+    # query_range groups by stream, so values across streams aren't globally
+    # sorted — sort newest-first so the cursor advances monotonically.
+    out.sort(key=lambda t: t[0], reverse=True)
+    return out
+
+
+def query_loki(loki_url: str, logql: str, start: datetime, end: datetime, limit: int) -> list[tuple[dict, dict]]:
+    """Fetch up to `limit` matching RRPairs from Loki across [start,end].
+
+    Returns a list of (stream_labels, body) pairs — one per matching log line.
+    `body` is the RRPair JSON object originally emitted by the forwarder; the
+    stream labels are the OTEL resource attrs that came in as Loki indexed
+    labels (cluster, service, namespace, exporter).
+
+    A single query_range can't return a large extract (Loki's ~4 MB response
+    cap), so we page newest-first with a timestamp cursor and merge + dedup by
+    RRPair uuid. Result order is newest-first, matching Speedscale cloud
+    snapshot ordering, and is truncated to `limit` total records.
+    """
+    base = loki_url.rstrip("/")
+    api = f"{base}/loki/api/v1/query_range"
+
+    start_ns = int(start.timestamp() * 1_000_000_000)
+    cursor_ns = int(end.timestamp() * 1_000_000_000)  # exclusive upper bound, walks down
+
+    seen: set[str] = set()
+    out: list[tuple[dict, dict]] = []
+
+    while cursor_ns > start_ns and len(out) < limit:
+        page_lines = _PAGE_LINES
+        while True:
+            try:
+                page = _query_page(api, logql, start_ns, cursor_ns, page_lines)
+                break
+            except RuntimeError as e:
+                # Fat RRPairs can still trip the cap at the default page size;
+                # halve and retry. A single line over the cap can't be paged
+                # around, so give up (re-raise) once we're down to one line.
+                if _RESOURCE_EXHAUSTED not in str(e) or page_lines <= 1:
+                    raise
+                page_lines = max(1, page_lines // 2)
+
+        if not page:
+            break
+
+        oldest_ns = page[-1][0]
+        added_this_page = 0
+        for ts_ns, labels, body in page:
+            rid = _rrpair_id(body)
+            if rid in seen:
+                continue
+            seen.add(rid)
             out.append((labels, body))
+            added_this_page += 1
+            if len(out) >= limit:
+                return out
+
+        # Advance the cursor just past the oldest line in this page. Loki's
+        # `end` is exclusive, so setting it to oldest_ns re-queries that same
+        # instant's lines (deduped above) and guarantees forward progress even
+        # when many lines share a timestamp.
+        next_cursor = oldest_ns
+        if next_cursor >= cursor_ns:
+            next_cursor = cursor_ns - 1
+        cursor_ns = next_cursor
+
+        # A full page that yielded only already-seen records means we're stuck
+        # on a dense same-timestamp cluster larger than a page; step back 1ns to
+        # keep moving rather than spin.
+        if added_this_page == 0:
+            cursor_ns -= 1
+
     return out
 
 
@@ -325,7 +427,7 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--start",     default="-15m", help="Window start: 'now', '-15m', '-2h', '-1d', or RFC3339. Default: -15m")
     p.add_argument("--end",       default="now",  help="Window end: same formats as --start. Default: now")
-    p.add_argument("--limit",     type=int, default=5000, help="Max records to fetch in one query (Loki has a server-side cap, usually 5000). Default: 5000")
+    p.add_argument("--limit",     type=int, default=5000, help="Max total records to gather. The window is paged in time slices to stay under Loki's ~4 MB response cap, so this is the merged total, not a per-query cap. Default: 5000")
 
     p.add_argument("--cluster",   help="Filter by cluster (stream label)")
     p.add_argument("--service",   help="Filter by service (stream label)")
