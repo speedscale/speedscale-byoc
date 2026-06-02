@@ -1,0 +1,27 @@
+# BYOC OTel Collector → Dynatrace chart values.
+#
+# This chart installs ONLY the in-cluster shipping pipeline (OTel Collector
+# with an otlphttp exporter). RRPair logs are forwarded as OTLP logs to your
+# Dynatrace environment's OTLP ingest API — no Fluent Bit, no in-cluster
+# storage or UI (Dynatrace is external SaaS).
+#
+# Pipeline: Forwarder --OTLP gRPC--> OTel Collector --OTLP HTTP--> Dynatrace
+#
+# The Speedscale Operator + Forwarder are installed separately via the
+# upstream `speedscale/speedscale-operator` chart, configured to ship RRPairs
+# to this chart's OTel Collector via:
+#   byoc_dynatrace.otel_endpoint: http://otel-collector.<namespace>.svc.cluster.local:4317
+
+# Dynatrace OTLP target. The OTel Collector forwards RRPair logs to your
+# Dynatrace environment's OTLP API. Create an API token with the
+# **logs.ingest** scope (Dynatrace > Access Tokens) and store it in the
+# Secret referenced by tokenSecret (key: apiToken).
+dynatrace:
+  # OTLP base URL for your environment, e.g.
+  #   SaaS:    https://<env-id>.live.dynatrace.com/api/v2/otlp
+  #   Managed: https://<your-domain>/e/<env-id>/api/v2/otlp
+  endpoint: https://CHANGEME.live.dynatrace.com/api/v2/otlp
+  # K8s Secret holding the API token (key: apiToken). Created out-of-band.
+  tokenSecret: byoc-dynatrace
+image:
+  otelCollector: otel/opentelemetry-collector-contrib:0.108.0

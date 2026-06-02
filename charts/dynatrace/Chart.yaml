@@ -1,0 +1,31 @@
+apiVersion: v2
+name: dynatrace
+description: |
+  Speedscale BYOC → OTel Collector → Dynatrace (OTLP logs ingest). The collector
+  ships RRPairs as OTLP logs to your Dynatrace environment; no Fluent Bit, no
+  in-cluster storage. Pairs with the Speedscale Operator chart (installed
+  separately into the `speedscale` namespace); this chart installs only the
+  in-cluster pipeline that receives RRPairs from the Forwarder's byoc_dynatrace
+  exporter and forwards them to Dynatrace's OTLP API (the collector adds the
+  Dynatrace Api-Token auth header the Forwarder can't).
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - speedscale
+  - byoc
+  - dynatrace
+  - otlp
+  - opentelemetry
+  - logs
+  - observability
+home: https://github.com/speedscale/speedscale-byoc
+maintainers:
+  - name: Speedscale
+    email: support@speedscale.com
+    url: https://speedscale.com
+annotations:
+  artifacthub.io/category: monitoring-logging
+  artifacthub.io/license: Apache-2.0
+sources:
+  - https://github.com/speedscale/speedscale-byoc/tree/main/charts/dynatrace
