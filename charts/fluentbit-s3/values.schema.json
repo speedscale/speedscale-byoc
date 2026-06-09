@@ -20,6 +20,14 @@
           "minLength": 1,
           "description": "AWS region where the bucket lives (e.g. us-east-1)"
         },
+        "endpoint": {
+          "type": "string",
+          "description": "Custom S3 endpoint for non-AWS providers (e.g. https://nyc3.digitaloceanspaces.com). Leave empty for AWS S3."
+        },
+        "forcePathStyle": {
+          "type": "boolean",
+          "description": "Force path-style URLs (bucket in path, not subdomain). Required for most S3-compatible providers."
+        },
         "credentialsSecret": {
           "type": "string",
           "description": "K8s Secret name with accessKeyId + secretAccessKey. Set to empty string for IRSA."

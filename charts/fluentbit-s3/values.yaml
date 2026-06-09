@@ -3,6 +3,12 @@ s3:
   bucket: my-rrpair-archive
   # AWS region where the bucket lives
   region: us-east-1
+  # Custom S3 endpoint for non-AWS providers (e.g. DigitalOcean Spaces, MinIO).
+  # Leave empty for AWS S3.
+  endpoint: ""
+  # Force path-style URLs (bucket in path, not subdomain). Required for most
+  # S3-compatible providers (DO Spaces, MinIO, etc.). Ignored when endpoint is empty.
+  forcePathStyle: false
   # Kubernetes Secret with accessKeyId + secretAccessKey. Set to "" for IRSA.
   credentialsSecret: byoc-fluentbit-s3
 
