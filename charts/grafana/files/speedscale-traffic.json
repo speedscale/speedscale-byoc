@@ -2,12 +2,20 @@
   "annotations": {
     "list": []
   },
-  "description": "Speedscale RRPair traffic viewer for BYOC + Loki. Inspired by the Speedscale Cloud traffic explorer — filter by service, method, status class, and endpoint regex; drill into recent requests without scrolling through raw JSON blobs.",
+  "description": "Speedscale RRPair traffic viewer for BYOC + Loki. Inspired by the Speedscale Cloud traffic explorer \u2014 filter by service, method, status class, and endpoint regex; drill into recent requests without scrolling through raw JSON blobs.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "title": "\u2190 BYOC Infrastructure",
+      "icon": "arrow-left",
+      "type": "link",
+      "url": "/d/speedscale-byoc/speedscale-byoc?${__url_time_range}",
+      "targetBlank": false
+    }
+  ],
   "liveNow": false,
   "panels": [
     {
@@ -464,7 +472,7 @@
     ]
   },
   "timezone": "",
-  "title": "Speedscale BYOC — Live API Traffic",
+  "title": "Speedscale BYOC \u2014 Live API Traffic",
   "uid": "speedscale-traffic",
   "version": 5,
   "weekStart": ""
