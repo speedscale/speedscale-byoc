@@ -45,11 +45,15 @@ speedscale-byoc/
 │   ├── fluentbit-gcs/    # OTel Collector + Fluent Bit → Google Cloud Storage
 │   ├── fluentbit-s3/     # OTel Collector + Fluent Bit → Amazon S3
 │   └── otlp/             # OTel Collector → any OTLP-native vendor (otlphttp)
-└── scripts/
-    ├── loki-gather.py    # Pull RRPairs from Loki → proxymock snapshot
-    ├── es-gather.py      # Pull RRPairs from Elasticsearch → proxymock snapshot
-    ├── gcs-gather.py     # Pull RRPairs from GCS → proxymock snapshot
-    └── s3-gather.py      # Pull RRPairs from S3 → proxymock snapshot
+├── scripts/
+│   ├── loki-gather.py    # Pull RRPairs from Loki → proxymock snapshot
+│   ├── es-gather.py      # Pull RRPairs from Elasticsearch → proxymock snapshot
+│   ├── gcs-gather.py     # Pull RRPairs from GCS → proxymock snapshot
+│   └── s3-gather.py      # Pull RRPairs from S3 → proxymock snapshot
+└── recipes/             # Bring-your-own-AI: proxymock + a local LLM, $0 / offline
+    ├── sre-debug/        # Replay an incident window → local model triages the cause
+    ├── reproduce/        # Replay one recorded request → confirm a bug deterministically
+    └── qa-tester/        # Scheduled regression gate → local model triages failures
 ```
 
 ## Architecture: one backend, one collector, one exporter
@@ -163,6 +167,21 @@ proxymock mock --in /tmp/snapshot
 ```
 
 See [`scripts/README.md`](scripts/README.md) for all filter flags.
+
+## Bring your own AI
+
+Once traffic is captured, your data and your model can both stay on your
+infrastructure. [`recipes/`](recipes/) pairs proxymock with a **local LLM**
+(Gemma 4 over any OpenAI-compatible server — oMLX, Ollama, llama.cpp, vLLM) for
+real QA/SRE work at **$0 subscription, zero egress**:
+
+- [`recipes/sre-debug/`](recipes/sre-debug/) — replay an incident window; the model triages what broke and names the likely culprit.
+- [`recipes/reproduce/`](recipes/reproduce/) — replay one recorded request; deterministically reproduce a bug and state the exact delta.
+- [`recipes/qa-tester/`](recipes/qa-tester/) — a scheduled `$0` regression gate; proxymock owns pass/fail, the model triages failures.
+
+In every recipe a deterministic script does the work and the model is consulted
+**once**, for the judgment a script is bad at — it never drives tools or decides
+pass/fail. See [`recipes/README.md`](recipes/README.md).
 
 ## License
 

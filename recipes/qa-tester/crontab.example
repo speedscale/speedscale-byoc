@@ -1,0 +1,12 @@
+# Nightly $0 QA regression run. Edit paths/target, then: crontab crontab.example
+# The job exits non-zero on regression; `MAILTO` (or your cron mailer) carries
+# the model's triage summary out of stderr/stdout.
+
+MAILTO=you@example.com
+SNAPSHOT=/var/lib/speedscale/nightly-snapshot
+QA_MODEL=gemma-4-31b-it-4bit
+LLM_BASE_URL=http://127.0.0.1:38010/v1
+
+# 02:30 daily: refresh the snapshot from your BYOC backend, then gate the build.
+# (banking demo: gather api-gateway traffic, replay against the staging gateway)
+30 2 * * *  python3 /opt/speedscale-byoc/scripts/loki-gather.py --loki-url http://loki:3100 --service api-gateway --start -24h --out-dir $SNAPSHOT && /opt/speedscale-byoc/recipes/qa-tester/qa-tester.sh --test-against http://api-gateway.banking-app:8080 --mock

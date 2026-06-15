@@ -1,0 +1,35 @@
+# Drop into .github/workflows/. The qa-tester exit code is the gate; the model
+# triage prints into the job log. Runner needs proxymock + a reachable
+# OpenAI-compatible model server (oMLX/Ollama/llama.cpp/vLLM) with a Gemma model.
+name: qa-regression
+on:
+  pull_request:
+  schedule:
+    - cron: "30 2 * * *"
+
+jobs:
+  replay-gate:
+    runs-on: self-hosted   # needs proxymock + a local model server on the runner
+    env:
+      SNAPSHOT: /tmp/snapshot
+      QA_MODEL: gemma-4-31b-it-4bit
+      LLM_BASE_URL: http://127.0.0.1:38010/v1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gather traffic window
+        run: |
+          python3 scripts/loki-gather.py \
+            --loki-url "$LOKI_URL" --service "$SERVICE" --start -24h \
+            --out-dir "$SNAPSHOT"
+        env:
+          LOKI_URL: ${{ secrets.LOKI_URL }}
+          SERVICE: api-gateway   # banking demo entry point
+
+      - name: Build + start app under test
+        run: ./hack/start-app.sh &   # your build; must listen on :8080
+
+      - name: Regression gate (deterministic) + local-AI triage
+        run: |
+          recipes/qa-tester/qa-tester.sh \
+            --test-against http://localhost:8080 --mock --threshold 100
