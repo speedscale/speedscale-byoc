@@ -106,9 +106,21 @@ PY
 # (json path), on which endpoints, with short samples. Lets the model tell a
 # real regression (status code, body field) from noise (timestamps, lengths).
 digest_drift() {  # <recorded_dir> <observed_dir>
-  local drift; drift="$(mktemp)"
-  if ! proxymock drift --source "$1" --source "$2" --sensitivity permissive --out "$drift" >/dev/null 2>&1; then
-    echo "FIELD DRIFT: (proxymock drift unavailable)"; rm -f "$drift"; return 0
+  # proxymock drift fails to marshal its report when a response body carries
+  # invalid UTF-8 (e.g. a binary error page) — "DriftSample.value contains
+  # invalid UTF-8". Run it on UTF-8-sanitized copies so a bad byte can't kill it.
+  local drift srec sobs; drift="$(mktemp)"; srec="$(mktemp -d)"; sobs="$(mktemp -d)"
+  python3 - "$1" "$srec" "$2" "$sobs" <<'PY'
+import os, glob, sys
+for src, dst in ((sys.argv[1], sys.argv[2]), (sys.argv[3], sys.argv[4])):
+    for p in glob.glob(os.path.join(src, "**", "*"), recursive=True):
+        if os.path.isdir(p): continue
+        out = os.path.join(dst, os.path.relpath(p, src))
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        open(out, "w", encoding="utf-8").write(open(p, "rb").read().decode("utf-8", "ignore"))
+PY
+  if ! proxymock drift --source "$srec" --source "$sobs" --sensitivity permissive --out "$drift" >/dev/null 2>&1; then
+    echo "FIELD DRIFT: (proxymock drift unavailable)"; rm -rf "$srec" "$sobs" "$drift"; return 0
   fi
   python3 - "$drift" <<'PY'
 import json, sys
@@ -129,7 +141,7 @@ for r in recs[:40]:
     print(f" - {loc}  [{eps}]")
     for v in vals: print(f"     • {v}")
 PY
-  rm -f "$drift"
+  rm -rf "$srec" "$sobs" "$drift"
 }
 
 # status_diff <recorded_dir> <observed_dir> — DIRECTIONAL status comparison read
