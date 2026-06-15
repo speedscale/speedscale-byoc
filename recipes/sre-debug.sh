@@ -134,6 +134,40 @@ PY
   rm -f "$drift"
 }
 
+# status_diff <recorded_dir> <observed_dir> — the unambiguous, DIRECTIONAL signal.
+# Reads the response status straight from each side's RRPair files and reports
+# how it changed per endpoint: "recorded 200 -> observed 500". Unlike drift's
+# unlabeled sample list, this is explicitly sourced, so the diagnosis can't
+# invert which way the change went.
+status_diff() {  # <recorded_dir> <observed_dir>
+  python3 - "$1" "$2" <<'PY'
+import os, re, glob, sys, collections
+def parse(d):
+    out = collections.defaultdict(set)
+    for p in glob.glob(os.path.join(d, "**", "*.md"), recursive=True):
+        if ".metadata" in p: continue
+        try: txt = open(p, encoding="utf-8", errors="replace").read()
+        except Exception: continue
+        rq = re.search(r'###\s*REQUEST\s*###.*?\n([A-Z]+)\s+(\S+)\s+HTTP/', txt, re.S)
+        rs = re.search(r'###\s*RESPONSE\s*###.*?\nHTTP/\S+\s+(\d{3})', txt, re.S)
+        if not rq or not rs: continue
+        url = re.sub(r'^[a-z]+://[^/]+', '', rq.group(2)).split('?')[0]
+        out[(rq.group(1), url)].add(int(rs.group(1)))
+    return out
+rec, obs = parse(sys.argv[1]), parse(sys.argv[2])
+rows = []
+for k in sorted(set(rec) | set(obs)):
+    r, o = rec.get(k, set()), obs.get(k, set())
+    if r != o:
+        rows.append(f"{k[0]} {k[1]}: recorded {sorted(r) or '-'} -> observed {sorted(o) or '-'}")
+if rows:
+    print("STATUS CHANGES (recorded -> observed; observed = the build under investigation):")
+    for r in rows: print(" -", r)
+else:
+    print("STATUS CHANGES: none")
+PY
+}
+
 # Warm-up so a cold-start blip isn't mistaken for the incident. Results ignored.
 w=0
 while [ "$w" -lt "$WARMUP" ]; do
@@ -158,22 +192,28 @@ if [ "$rc" -eq 0 ]; then
 fi
 
 echo
+status="$(status_diff "$SNAPSHOT" "$run/observed")"
+echo "$status"
+echo
 drift="$(digest_drift "$SNAPSHOT" "$run/observed")"
 echo "$drift"
 echo
 echo ">> diagnosing with local model ..." >&2
-cat <<EOF | ask_model "You are a senior SRE triaging an incident. Recorded traffic was replayed against a build under investigation. Ground every claim in the match summary and field drift below; do not speculate beyond them. Ignore timestamp/Content-Length/date noise."
+cat <<EOF | ask_model "You are a senior SRE triaging an incident. Recorded traffic was replayed against a build under investigation; 'observed' is what that build returned NOW. Ground every claim in the evidence below; do not speculate beyond it. A recorded 2xx that is now 5xx is a live failure in the build — never call that an improvement. Ignore timestamp/Content-Length/date noise."
 Recorded traffic replayed against the build. Here is the evidence.
+
+Status changes, directional (recorded -> observed; observed is the build NOW):
+$status
 
 Affected endpoints (match summary):
 $digest
 
-What actually differed, field by field (recorded vs observed):
+Field-level drift (supporting detail; samples are not direction-labeled — trust the STATUS CHANGES above for direction):
 $drift
 
 Diagnose, briefly:
-1. Reproduced? Which endpoints fail, and how (status / body field).
-2. Most likely culprit — the single endpoint or downstream dependency, citing the drift.
+1. Reproduced? Which endpoints fail and how (cite the recorded -> observed status).
+2. Most likely culprit — the single endpoint or downstream dependency.
 3. Blast radius — which user-facing flows these endpoints sit on.
 4. Most likely root cause and the next diagnostic step.
 EOF

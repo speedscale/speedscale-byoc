@@ -132,6 +132,39 @@ PY
   rm -f "$drift"
 }
 
+# status_diff <recorded_dir> <observed_dir> — DIRECTIONAL status comparison read
+# straight from each side's RRPair files: "recorded 200 -> observed 500". Unlike
+# drift's unlabeled samples, this is explicitly sourced, so the triage can't
+# invert which way a status changed.
+status_diff() {  # <recorded_dir> <observed_dir>
+  python3 - "$1" "$2" <<'PY'
+import os, re, glob, sys, collections
+def parse(d):
+    out = collections.defaultdict(set)
+    for p in glob.glob(os.path.join(d, "**", "*.md"), recursive=True):
+        if ".metadata" in p: continue
+        try: txt = open(p, encoding="utf-8", errors="replace").read()
+        except Exception: continue
+        rq = re.search(r'###\s*REQUEST\s*###.*?\n([A-Z]+)\s+(\S+)\s+HTTP/', txt, re.S)
+        rs = re.search(r'###\s*RESPONSE\s*###.*?\nHTTP/\S+\s+(\d{3})', txt, re.S)
+        if not rq or not rs: continue
+        url = re.sub(r'^[a-z]+://[^/]+', '', rq.group(2)).split('?')[0]
+        out[(rq.group(1), url)].add(int(rs.group(1)))
+    return out
+rec, obs = parse(sys.argv[1]), parse(sys.argv[2])
+rows = []
+for k in sorted(set(rec) | set(obs)):
+    r, o = rec.get(k, set()), obs.get(k, set())
+    if r != o:
+        rows.append(f"{k[0]} {k[1]}: recorded {sorted(r) or '-'} -> observed {sorted(o) or '-'}")
+if rows:
+    print("STATUS CHANGES (recorded -> observed; observed = the build under test):")
+    for r in rows: print(" -", r)
+else:
+    print("STATUS CHANGES: none")
+PY
+}
+
 # Warm-up: a SUT can blip on the first replay after it starts (cold connections,
 # JIT, lazy route compile). Fire throwaway passes so the gate measures the build,
 # not the cold start. Results discarded.
@@ -158,17 +191,23 @@ if [ "$gate_rc" -eq 0 ]; then
 fi
 
 echo
+status="$(status_diff "$SNAPSHOT" "$run/observed")"
+echo "$status"
+echo
 drift="$(digest_drift "$SNAPSHOT" "$run/observed")"
 echo "$drift"
 echo
 echo ">> regression detected — triaging with local model ..." >&2
-cat <<EOF | ask_model "You are a QA engineer triaging a failed regression run. Use the field-level drift to separate real regressions (status codes, changed body fields) from environmental noise (timestamps, Content-Length, dates). Be terse."
+cat <<EOF | ask_model "You are a QA engineer triaging a failed regression run; 'observed' is what the build under test returned. Use the directional STATUS CHANGES for which way each status moved (a recorded 2xx now 5xx is a real regression, never an improvement); use field drift for body changes; treat timestamps/Content-Length/dates as noise. Be terse."
 A scheduled regression replay failed the match-percentage gate.
+
+Status changes, directional (recorded -> observed):
+$status
 
 Match summary:
 $(digest_failures "$results")
 
-What actually differed, field by field (recorded vs observed):
+Field-level drift (supporting; samples not direction-labeled — trust STATUS CHANGES for direction):
 $drift
 
 Produce a short report:
