@@ -45,11 +45,13 @@ speedscale-byoc/
 │   ├── fluentbit-gcs/    # OTel Collector + Fluent Bit → Google Cloud Storage
 │   ├── fluentbit-s3/     # OTel Collector + Fluent Bit → Amazon S3
 │   └── otlp/             # OTel Collector → any OTLP-native vendor (otlphttp)
-└── scripts/
-    ├── loki-gather.py    # Pull RRPairs from Loki → proxymock snapshot
-    ├── es-gather.py      # Pull RRPairs from Elasticsearch → proxymock snapshot
-    ├── gcs-gather.py     # Pull RRPairs from GCS → proxymock snapshot
-    └── s3-gather.py      # Pull RRPairs from S3 → proxymock snapshot
+├── scripts/
+│   ├── loki-gather.py    # Pull RRPairs from Loki → proxymock snapshot
+│   ├── es-gather.py      # Pull RRPairs from Elasticsearch → proxymock snapshot
+│   ├── gcs-gather.py     # Pull RRPairs from GCS → proxymock snapshot
+│   └── s3-gather.py      # Pull RRPairs from S3 → proxymock snapshot
+└── recipes/             # Bring-your-own-AI: proxymock + a local LLM, $0 / offline
+    └── qa-tester.sh      # Regression gate → proxymock owns pass/fail, local model triages
 ```
 
 ## Architecture: one backend, one collector, one exporter
@@ -163,6 +165,17 @@ proxymock mock --in /tmp/snapshot
 ```
 
 See [`scripts/README.md`](scripts/README.md) for all filter flags.
+
+## Bring your own AI
+
+Once traffic is captured, your data and your model can both stay on your
+infrastructure. [`recipes/qa-tester.sh`](recipes/qa-tester.sh) pairs proxymock
+with a **local LLM** (over any OpenAI-compatible server — oMLX, Ollama, vLLM,
+KServe) for a **$0, zero-egress regression gate**: replay recorded traffic
+against a build, proxymock owns pass/fail (exit 0/1), and on failure the model
+triages the field-level drift into REGRESSION vs NOISE. One self-contained
+script — the deterministic spine does the work; the model is consulted **once**,
+for the judgment a script is bad at. See [`recipes/README.md`](recipes/README.md).
 
 ## License
 
