@@ -1,8 +1,8 @@
 # Recipes: bring your own AI
 
 Pair **proxymock** (record / replay, free and local) with a **local LLM** to do
-real QA work at **$0 subscription and zero egress** — your traffic and your model
-both stay on your infrastructure, which is the whole point of BYOC.
+real QA and SRE work at **$0 subscription and zero egress** — your traffic and
+your model both stay on your infrastructure, which is the whole point of BYOC.
 
 ## `qa-tester.sh` — the $0 QA automation engineer
 
@@ -29,6 +29,27 @@ Exit `0` = clean, `1` = regression — wire it to cron or CI like any test comma
 3. **On pass** — exit 0, no model call (cheap and quiet).
 4. **On fail** — `proxymock drift` extracts the exact fields that changed, then the
    model labels each REGRESSION vs NOISE, picks the top fix, drafts a ticket title.
+
+## `sre-debug.sh` — incident triage
+
+The investigative cousin: instead of a pass/fail gate, it **diagnoses**. Replay
+the traffic that exercises a failing path against the build under investigation;
+the model names the culprit endpoint/dependency, blast radius, and likely root
+cause — grounded in the same field-level drift. No prod access needed.
+
+```bash
+# pull the incident window — e.g. the last 30 min of 5xx for a service
+proxymock cloud search checkout --from now-30m --filter-query '(status IS "500")'
+proxymock cloud pull snapshot <id>
+
+# replay it against the suspect build and diagnose
+SNAPSHOT=proxymock/snapshot-… ./sre-debug.sh --test-against http://localhost:3000
+```
+
+Exit `0` = nothing reproduced (likely transient/env); `1` = failures reproduced
+(a diagnosis is printed). Sharpest when the snapshot also captured the
+**downstream dependency** calls — then the drift can point straight at which
+backend changed, not just which endpoint.
 
 ### Requirements
 
