@@ -35,25 +35,6 @@ helm upgrade --install byoc-grafana speedscale-byoc/grafana \
 
 See each chart's `README.md` for the full install + configure + replay walkthrough.
 
-## Repository layout
-
-```
-speedscale-byoc/
-├── charts/
-│   ├── grafana/          # OTel Collector + Loki + Prometheus + Grafana
-│   ├── elasticsearch/    # Elasticsearch + Kibana + OTel Collector
-│   ├── fluentbit-gcs/    # OTel Collector + Fluent Bit → Google Cloud Storage
-│   ├── fluentbit-s3/     # OTel Collector + Fluent Bit → Amazon S3
-│   └── otlp/             # OTel Collector → any OTLP-native vendor (otlphttp)
-├── scripts/
-│   ├── loki-gather.py    # Pull RRPairs from Loki → proxymock snapshot
-│   ├── es-gather.py      # Pull RRPairs from Elasticsearch → proxymock snapshot
-│   ├── gcs-gather.py     # Pull RRPairs from GCS → proxymock snapshot
-│   └── s3-gather.py      # Pull RRPairs from S3 → proxymock snapshot
-└── recipes/             # Bring-your-own-AI: proxymock + a local LLM, $0 / offline
-    └── qa-tester.sh      # Regression gate → proxymock owns pass/fail, local model triages
-```
-
 ## Architecture: one backend, one collector, one exporter
 
 Every chart here follows the same rule, and so should any backend you add:
@@ -169,13 +150,20 @@ See [`scripts/README.md`](scripts/README.md) for all filter flags.
 ## Bring your own AI
 
 Once traffic is captured, your data and your model can both stay on your
-infrastructure. [`recipes/qa-tester.sh`](recipes/qa-tester.sh) pairs proxymock
-with a **local LLM** (over any OpenAI-compatible server — oMLX, Ollama, vLLM,
-KServe) for a **$0, zero-egress regression gate**: replay recorded traffic
-against a build, proxymock owns pass/fail (exit 0/1), and on failure the model
-triages the field-level drift into REGRESSION vs NOISE. One self-contained
-script — the deterministic spine does the work; the model is consulted **once**,
-for the judgment a script is bad at. See [`recipes/README.md`](recipes/README.md).
+infrastructure. The [`recipes/`](recipes/) pair proxymock with a **local LLM**
+(any OpenAI-compatible server — oMLX, Ollama, vLLM, KServe) for **$0,
+zero-egress** workflows. Each is one self-contained script: a deterministic
+proxymock spine does the work, and the model is consulted **once**, for the
+judgment a script is bad at.
+
+- [`recipes/qa-tester.sh`](recipes/qa-tester.sh) — **regression gate.** Replay
+  recorded traffic against a build; proxymock owns pass/fail (exit 0/1); on
+  failure the model triages the field-level drift into REGRESSION vs NOISE.
+- [`recipes/sre-debug.sh`](recipes/sre-debug.sh) — **incident triage.** Replay
+  the failing traffic against a build to reproduce, then the model diagnoses the
+  culprit endpoint/dependency, blast radius, and likely root cause.
+
+See [`recipes/README.md`](recipes/README.md).
 
 ## License
 
