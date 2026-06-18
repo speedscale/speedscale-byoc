@@ -1,8 +1,11 @@
-# Speedscale BYOC — Fluent Bit → Amazon S3 data-lake
+# Speedscale BYOC — OTel Collector to Amazon S3 data-lake
 
 Speedscale captures inbound + outbound traffic in the cluster and ships
-RRPair logs through an OpenTelemetry Collector → Fluent Bit shipper → an
-**Amazon S3** bucket as partitioned, gzipped NDJSON objects.
+RRPair logs through an OpenTelemetry Collector to an **Amazon S3** bucket
+as partitioned OTLP JSON objects.
+
+> **Legacy name:** this chart still lives at `charts/fluentbit-s3` for
+> compatibility with existing GitOps references. It does not deploy Fluent Bit.
 
 Use this scenario when you want a durable object-storage archive on AWS —
 for compliance retention, Athena/Glue queries, downstream ML pipelines,
@@ -19,14 +22,12 @@ flowchart LR
     Cap[eBPF nettap / sidecar capture]
     Fwd[Speedscale Forwarder<br/>DLP + filter rules]
     OTel[OTel Collector<br/>OTLP gRPC :4317]
-    FB[Fluent Bit<br/>opentelemetry input :4318]
   end
-  S3[(S3 bucket<br/>NDJSON.gz objects)]
+  S3[(S3 bucket<br/>OTLP JSON objects)]
 
   Apps --> Cap --> Fwd
   Fwd -->|OTLP gRPC| OTel
-  OTel -->|OTLP HTTP| FB
-  FB -->|PutObject / multipart| S3
+  OTel -->|PutObject| S3
 ```
 
 ## Prerequisites
@@ -48,7 +49,7 @@ aws s3api put-public-access-block \
 
 ### 2. IAM permissions
 
-The Fluent Bit pod needs `s3:PutObject` (and `s3:CreateMultipartUpload`, `s3:UploadPart`, `s3:CompleteMultipartUpload`, `s3:AbortMultipartUpload`) on the bucket. Use one of:
+The OTel Collector pod needs `s3:PutObject` on the bucket. Use one of:
 
 **Option A — Static credentials (any cluster)**
 
@@ -70,8 +71,8 @@ The Fluent Bit pod needs `s3:PutObject` (and `s3:CreateMultipartUpload`, `s3:Upl
 Create an IAM user, attach the policy, generate an access key, then create the Secret:
 
 ```bash
-kubectl create namespace byoc-fluentbit-s3
-kubectl -n byoc-fluentbit-s3 create secret generic byoc-fluentbit-s3 \
+kubectl create namespace byoc-s3
+kubectl -n byoc-s3 create secret generic byoc-s3 \
   --from-literal=accessKeyId=AKIA... \
   --from-literal=secretAccessKey=...
 ```
@@ -100,27 +101,29 @@ helm upgrade --install speedscale-operator speedscale/speedscale-operator \
   -n speedscale --create-namespace \
   --set apiKeySecret=speedscale-apikey \
   --set clusterName=<YOUR_CLUSTER_NAME> \
-  --set 'forwarder.exporters.byoc_s3.otel_endpoint=http://otel-collector.byoc-fluentbit-s3.svc.cluster.local:4317' \
+  --set 'forwarder.exporters.byoc_s3.otel_endpoint=http://otel-collector.byoc-s3.svc.cluster.local:4317' \
   --set 'forwarder.exporters.byoc_s3.filter_rule=standard' \
   --set 'forwarder.exporters.byoc_s3.dlp_config_id=standard'
 
-# OTel Collector + Fluent Bit → S3 (static creds)
-helm upgrade --install byoc-fluentbit-s3 speedscale-byoc/fluentbit-s3 \
-  -n byoc-fluentbit-s3 --create-namespace \
+# OTel Collector to S3 (static creds)
+helm upgrade --install byoc-s3 speedscale-byoc/fluentbit-s3 \
+  -n byoc-s3 --create-namespace \
   --set s3.bucket=my-rrpair-archive \
-  --set s3.region=us-east-1
+  --set s3.region=us-east-1 \
+  --set s3.credentialsSecret=byoc-s3
 ```
 
 **Option B — IRSA:**
 
 ```bash
-helm upgrade --install byoc-fluentbit-s3 speedscale-byoc/fluentbit-s3 \
-  -n byoc-fluentbit-s3 --create-namespace \
+helm upgrade --install byoc-s3 speedscale-byoc/fluentbit-s3 \
+  -n byoc-s3 --create-namespace \
   --set s3.bucket=my-rrpair-archive \
   --set s3.region=us-east-1 \
   --set s3.credentialsSecret="" \
   --set irsa.enabled=true \
-  --set irsa.roleArn=arn:aws:iam::<ACCOUNT_ID>:role/<ROLE_NAME>
+  --set irsa.roleArn=arn:aws:iam::<ACCOUNT_ID>:role/<ROLE_NAME> \
+  --set irsa.serviceAccountName=byoc-s3
 ```
 
 ## Verify
@@ -132,23 +135,23 @@ kubectl -n speedscale get cm speedscale-forwarder \
   -o jsonpath='{.data.EXPORTERS}' | jq .
 ```
 
-Expected: `byoc_s3` with `otel_endpoint` pointing at `byoc-fluentbit-s3`.
+Expected: `byoc_s3` with `otel_endpoint` pointing at `byoc-s3`.
 
 **2. OTel Collector is receiving logs**
 
 ```bash
-kubectl -n byoc-fluentbit-s3 logs deploy/otel-collector --tail=50 | grep -E 'log_records|otelcol'
+kubectl -n byoc-s3 logs deploy/otel-collector --tail=50 | grep -E 'log_records|otelcol'
 ```
 
 Non-zero `log_records` = Forwarder is delivering.
 
-**3. Fluent Bit is uploading to S3**
+**3. OTel Collector is uploading to S3**
 
 ```bash
-kubectl -n byoc-fluentbit-s3 logs deploy/fluent-bit --tail=50 | grep -E 'Uploaded|upload|error'
+kubectl -n byoc-s3 logs deploy/otel-collector --tail=50 | grep -E 'awss3|exporter|error'
 ```
 
-Look for `Uploaded` messages. If you see `AccessDenied`, check IAM permissions and credentials.
+If you see `AccessDenied`, check IAM permissions and credentials.
 
 **4. Objects appear in S3**
 
@@ -156,13 +159,13 @@ Look for `Uploaded` messages. If you see `AccessDenied`, check IAM permissions a
 aws s3 ls s3://my-rrpair-archive --recursive | tail -10
 ```
 
-Default layout: `year=YYYY/month=MM/day=DD/hour=HH/<uuid>-<index>.json.gz`. Objects appear within ~30s of traffic flowing.
+Default layout: `byoc/year=YYYY/month=MM/day=DD/hour=HH/minute=MM/logs_<timestamp>_<uuid>.json`. Objects appear within ~30s of traffic flowing.
 
 **5. Peek at a record**
 
 ```bash
 aws s3 cp "$(aws s3 ls s3://my-rrpair-archive --recursive | tail -1 | awk '{print "s3://my-rrpair-archive/"$4}')" - \
-  | gunzip | head -1 | jq '{service: .service, command: .command, status: .status}'
+  | jq 'keys'
 ```
 
 ## Troubleshoot
@@ -180,31 +183,27 @@ Values weren't applied. Pass `forwarder.exporters.byoc_s3.*` on `helm upgrade`, 
 
 Always use `http://otel-collector.<namespace>.svc.cluster.local:4317`.
 
-**Fluent Bit: `NoCredentialProviders` / `AccessDenied`**
+**OTel Collector: `NoCredentialProviders` / `AccessDenied`**
 
 - Static creds: verify Secret name matches `s3.credentialsSecret`, keys are `accessKeyId` and `secretAccessKey`, and the IAM user has `s3:PutObject` on the bucket.
-- IRSA: confirm the trust policy on the IAM role references your cluster's OIDC provider and the `byoc-fluentbit-s3` service account. Check the projected token is mounted: `kubectl -n byoc-fluentbit-s3 exec deploy/fluent-bit -- env | grep AWS_WEB_IDENTITY`.
+- IRSA: confirm the trust policy on the IAM role references your cluster's OIDC provider and the configured service account. Check the projected token is mounted: `kubectl -n byoc-s3 exec deploy/otel-collector -- env | grep AWS_WEB_IDENTITY`.
 
-**Fluent Bit 3.x collapses log records**
+**Objects are too small or too numerous**
 
-FB 3.1.x's `opentelemetry` input discards individual `LogRecord` entries. The chart pins **Fluent Bit 4.0.3**. If you overrode the image, ensure it's ≥ 4.0.3.
-
-**Objects appear in S3 but bodies are empty**
-
-Fluent Bit may have run out of buffer space. Check `store_dir` (`/var/fluent-bit/buffer`) is writable and the emptyDir isn't size-constrained by the cluster's node config.
+The current chart does not expose byte-size flush controls. The Collector path prioritizes OTLP correctness over Fluent Bit's S3 chunk controls.
 
 **`s3-gather.py` returns zero records**
 
 - Confirm objects exist with `aws s3 ls`
 - Widen `--start` (e.g. `-2h`)
-- Check `--service` matches the `service` field in the NDJSON exactly (case-sensitive)
+- Check `--service` matches the service field exactly (case-sensitive)
 - Pass `--dry-run` to see which S3 prefixes the time window resolves to
 
 ## Upgrade
 
 ```bash
 helm repo update speedscale-byoc
-helm upgrade byoc-fluentbit-s3 speedscale-byoc/fluentbit-s3 -n byoc-fluentbit-s3 --reuse-values \
+helm upgrade byoc-s3 speedscale-byoc/fluentbit-s3 -n byoc-s3 --reuse-values \
   --set s3.bucket=my-rrpair-archive \
   --set s3.region=us-east-1
 ```
@@ -213,7 +212,7 @@ Objects already in S3 are unaffected. Check the [CHANGELOG](CHANGELOG.md) for br
 
 ## Data shape
 
-Identical to `fluentbit-gcs` — one OTLP LogRecord per NDJSON line, Hive-partitioned. See [`charts/fluentbit-gcs/README.md`](../fluentbit-gcs/README.md#data-shape) for the full record schema.
+Objects use the OTel `otlp_json` marshaler and Hive-style time partitions.
 
 ## Replay from the archive
 
@@ -233,26 +232,11 @@ Pass `--dry-run` first to see which S3 prefixes the window resolves to. See [`sc
 
 ## Athena / Glue integration
 
-The default key format (`year=YYYY/month=MM/day=DD/hour=HH/`) is designed for Glue auto-discovery. To create an Athena table:
+Objects are written under Hive-style time partitions:
+`byoc/year=YYYY/month=MM/day=DD/hour=HH/minute=MM/`.
 
-```sql
-CREATE EXTERNAL TABLE rrpairs (
-  `@timestamp`  string,
-  service       string,
-  namespace     string,
-  msgType       string,
-  command       string,
-  status        string,
-  duration      double,
-  http          struct<req:struct<method:string,url:string>,res:struct<statusCode:int>>
-)
-PARTITIONED BY (year string, month string, day string, hour string)
-ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
-LOCATION 's3://my-rrpair-archive/'
-TBLPROPERTIES ('has_encrypted_data'='false');
-
-MSCK REPAIR TABLE rrpairs;
-```
+The object body uses OTel JSON, not the old flattened RRPair NDJSON shape. Build
+Athena tables from the actual OTel JSON structure you want to query.
 
 ## Configuration reference
 
@@ -260,13 +244,8 @@ MSCK REPAIR TABLE rrpairs;
 |---|---|---|
 | `s3.bucket` | `my-rrpair-archive` | S3 bucket name |
 | `s3.region` | `us-east-1` | AWS region where the bucket lives |
-| `s3.credentialsSecret` | `byoc-fluentbit-s3` | K8s Secret with `accessKeyId` + `secretAccessKey`. Set to `""` for IRSA. |
-| `s3.keyFormat` | `/year=%Y/month=%m/day=%d/hour=%H/$UUID-$INDEX.json.gz` | Object key template (strftime + FB vars) |
-| `s3.totalFileSize` | `5M` | Flush to S3 when batch reaches this size |
-| `s3.uploadTimeout` | `30s` | Flush to S3 after this time even if batch is smaller |
-| `s3.compression` | `gzip` | Output compression: `gzip` or `none` |
+| `s3.credentialsSecret` | `byoc-s3` | K8s Secret with `accessKeyId` + `secretAccessKey`. Set to `""` for IRSA. |
 | `irsa.enabled` | `false` | Enable IRSA (EKS only) — creates an annotated ServiceAccount |
 | `irsa.roleArn` | `""` | IAM role ARN for IRSA. Required when `irsa.enabled=true`. |
-| `irsa.serviceAccountName` | `byoc-fluentbit-s3` | Name of the ServiceAccount created when IRSA is enabled |
+| `irsa.serviceAccountName` | `byoc-s3` | Name of the ServiceAccount created when IRSA is enabled. |
 | `image.otelCollector` | `otel/opentelemetry-collector-contrib:0.108.0` | OTel Collector image |
-| `image.fluentBit` | `cr.fluentbit.io/fluent/fluent-bit:4.0.3` | Fluent Bit image — must be ≥ 4.0.3 |

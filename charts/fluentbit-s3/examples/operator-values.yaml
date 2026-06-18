@@ -1,4 +1,4 @@
-# Speedscale Operator values for the BYOC Fluent Bit → S3 scenario.
+# Speedscale Operator values for the BYOC OTel Collector to S3 scenario.
 # Pass to the operator chart with:
 #   helm upgrade --install speedscale-operator speedscale/speedscale-operator \
 #     -n speedscale --create-namespace \
@@ -42,8 +42,8 @@ forwarder:
       memory: "2Gi"
   exporters:
     byoc_s3:
-      # Point at the OTel Collector in the byoc-fluentbit-s3 namespace.
+      # Point at the OTel Collector in the byoc-s3 namespace.
       # Must include the http:// scheme.
-      otel_endpoint: "http://otel-collector.byoc-fluentbit-s3.svc.cluster.local:4317"
+      otel_endpoint: "http://otel-collector.byoc-s3.svc.cluster.local:4317"
       filter_rule: "standard"
       dlp_config_id: "standard"
