@@ -10,7 +10,7 @@ s3:
   # S3-compatible providers (DO Spaces, MinIO, etc.). Ignored when endpoint is empty.
   forcePathStyle: false
   # Kubernetes Secret with accessKeyId + secretAccessKey. Set to "" for IRSA.
-  credentialsSecret: byoc-fluentbit-s3
+  credentialsSecret: byoc-s3
 
 irsa:
   # Enable IRSA (EKS only) — creates an annotated ServiceAccount and omits
@@ -19,7 +19,7 @@ irsa:
   # IAM role ARN for IRSA. Required when irsa.enabled=true.
   roleArn: ""
   # Name of the ServiceAccount created when IRSA is enabled
-  serviceAccountName: byoc-fluentbit-s3
+  serviceAccountName: byoc-s3
 
 # Image pin. Must be opentelemetry-collector-contrib (awss3 is a contrib exporter).
 image:

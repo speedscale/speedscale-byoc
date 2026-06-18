@@ -1,11 +1,14 @@
 # Example Argo CD Application manifest for the BYOC OTel Collector → S3
 # reference architecture.
 #
-# Option A (static credentials): the K8s Secret `byoc-fluentbit-s3` must
+# Legacy note: the chart path is still charts/fluentbit-s3, but it deploys
+# OTel Collector awss3 and no Fluent Bit pod.
+#
+# Option A (static credentials): the K8s Secret `byoc-s3` must
 # already exist in the destination namespace BEFORE Argo syncs. Create it
 # out-of-band so credentials never live in git:
-#   kubectl create namespace byoc-fluentbit-s3
-#   kubectl -n byoc-fluentbit-s3 create secret generic byoc-fluentbit-s3 \
+#   kubectl create namespace byoc-s3
+#   kubectl -n byoc-s3 create secret generic byoc-s3 \
 #     --from-literal=accessKeyId=AKIA... \
 #     --from-literal=secretAccessKey=...
 #
@@ -17,7 +20,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: byoc-fluentbit-s3
+  name: byoc-s3
   namespace: argocd
 spec:
   project: default
@@ -32,16 +35,17 @@ spec:
         s3:
           bucket: my-rrpair-archive
           region: us-east-1
+          credentialsSecret: byoc-s3
 
         # Option B: uncomment to use IRSA instead of static credentials.
         # irsa:
         #   enabled: true
         #   roleArn: arn:aws:iam::<ACCOUNT_ID>:role/<ROLE_NAME>
-        #   serviceAccountName: byoc-fluentbit-s3
+        #   serviceAccountName: byoc-s3
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: byoc-fluentbit-s3
+    namespace: byoc-s3
 
   syncPolicy:
     automated:
@@ -49,7 +53,7 @@ spec:
       selfHeal: true    # revert drift back to git
     syncOptions:
       # Argo creates the namespace, but for Option A you must still create
-      # the byoc-fluentbit-s3 Secret out-of-band before sync succeeds.
+      # the byoc-s3 Secret out-of-band before sync succeeds.
       - CreateNamespace=true
       - ServerSideApply=true
       - ApplyOutOfSyncOnly=true

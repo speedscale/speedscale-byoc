@@ -2,6 +2,7 @@ apiVersion: v2
 name: fluentbit-s3
 description: |
   Speedscale BYOC reference architecture — OTel Collector → Amazon S3.
+  The chart name/path are legacy compatibility names from the prior Fluent Bit implementation.
   The collector's native awss3 exporter writes OTLP-JSON objects directly to S3.
   Supports both static IAM credentials (Secret) and EKS IRSA (no credentials in cluster).
   No Fluent Bit required. Pairs with the Speedscale Operator chart (installed separately
