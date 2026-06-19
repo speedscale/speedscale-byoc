@@ -132,6 +132,40 @@ entries:
       artifacthub.io/category: infrastructure
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
+    appVersion: 2.1.0
+    created: "2026-06-19T16:13:24.317293698Z"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Amazon
+      S3. The chart name/path are legacy compatibility names from the prior Fluent
+      Bit implementation. The collector''s native awss3 exporter writes OTLP-JSON
+      objects directly to S3. Supports both static IAM credentials (Secret) and EKS
+      IRSA (no credentials in cluster). No Fluent Bit required. Pairs with the Speedscale
+      Operator chart (installed separately into the `speedscale` namespace). '
+    digest: 250276fd18b1d131ddd1daab33ce580adf0970c5453c8392e11f97139ae63a37
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - s3
+    - aws
+    - opentelemetry
+    - awss3
+    - archive
+    - data-lake
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: fluentbit-s3
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/fluentbit-s3
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-s3-2.1.0/fluentbit-s3-2.1.0.tgz
+    version: 2.1.0
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
     appVersion: 2.0.0
     created: "2026-06-01T12:27:41.902204939Z"
     description: 'Speedscale BYOC reference architecture — OTel Collector → Amazon
@@ -254,4 +288,4 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/otlp-1.0.0/otlp-1.0.0.tgz
     version: 1.0.0
-generated: "2026-06-02T22:24:11.525358487Z"
+generated: "2026-06-19T16:13:24.509638124Z"
