@@ -3,6 +3,8 @@ s3:
   bucket: my-rrpair-archive
   # AWS region where the bucket lives
   region: us-east-1
+  # Base prefix used for archived OTLP JSON objects.
+  prefix: byoc
   # Custom S3 endpoint for non-AWS providers (e.g. DigitalOcean Spaces, MinIO).
   # Leave empty for AWS S3.
   endpoint: ""
@@ -24,3 +26,13 @@ irsa:
 # Image pin. Must be opentelemetry-collector-contrib (awss3 is a contrib exporter).
 image:
   otelCollector: otel/opentelemetry-collector-contrib:0.108.0
+  awsCli: amazon/aws-cli:2.17.52
+
+layout:
+  # When enabled, the chart writes known workloads to deterministic
+  # namespace/app/time prefixes and publishes _speedscale/byoc-layout.json.
+  enabled: false
+  partition: minute
+  workloads: []
+  # - namespace: banking-app
+  #   appLabel: banking-gateway

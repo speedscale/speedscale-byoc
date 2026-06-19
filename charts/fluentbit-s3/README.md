@@ -113,6 +113,25 @@ helm upgrade --install byoc-s3 speedscale-byoc/fluentbit-s3 \
   --set s3.credentialsSecret=byoc-s3
 ```
 
+To make proxymock imports fast in buckets that contain multiple workloads, add
+known workload partitions:
+
+```yaml
+layout:
+  enabled: true
+  workloads:
+    - namespace: banking-app
+      appLabel: banking-gateway
+    - namespace: banking-app
+      appLabel: banking-transactions
+```
+
+When enabled, the chart writes matching records under
+`byoc/namespace=<namespace>/app=<appLabel>/year=YYYY/month=MM/day=DD/hour=HH/minute=MM/`
+and publishes `_speedscale/byoc-layout.json` so proxymock web can auto-detect
+the layout. Records that do not match a configured workload still go to the
+base `byoc/` prefix.
+
 **Option B — IRSA:**
 
 ```bash
@@ -232,8 +251,12 @@ Pass `--dry-run` first to see which S3 prefixes the window resolves to. See [`sc
 
 ## Athena / Glue integration
 
-Objects are written under Hive-style time partitions:
+By default, objects are written under Hive-style time partitions:
 `byoc/year=YYYY/month=MM/day=DD/hour=HH/minute=MM/`.
+
+With `layout.enabled=true`, configured workloads are additionally partitioned
+by namespace and app label:
+`byoc/namespace=<namespace>/app=<appLabel>/year=YYYY/month=MM/day=DD/hour=HH/minute=MM/`.
 
 The object body uses OTel JSON, not the old flattened RRPair NDJSON shape. Build
 Athena tables from the actual OTel JSON structure you want to query.
@@ -244,8 +267,12 @@ Athena tables from the actual OTel JSON structure you want to query.
 |---|---|---|
 | `s3.bucket` | `my-rrpair-archive` | S3 bucket name |
 | `s3.region` | `us-east-1` | AWS region where the bucket lives |
+| `s3.prefix` | `byoc` | Base S3 prefix for archived OTLP JSON objects |
 | `s3.credentialsSecret` | `byoc-s3` | K8s Secret with `accessKeyId` + `secretAccessKey`. Set to `""` for IRSA. |
 | `irsa.enabled` | `false` | Enable IRSA (EKS only) — creates an annotated ServiceAccount |
 | `irsa.roleArn` | `""` | IAM role ARN for IRSA. Required when `irsa.enabled=true`. |
 | `irsa.serviceAccountName` | `byoc-s3` | Name of the ServiceAccount created when IRSA is enabled. |
+| `layout.enabled` | `false` | Enable workload-aware prefixes and publish `_speedscale/byoc-layout.json` |
+| `layout.workloads` | `[]` | Known workloads to partition by `namespace` and `appLabel` |
 | `image.otelCollector` | `otel/opentelemetry-collector-contrib:0.108.0` | OTel Collector image |
+| `image.awsCli` | `amazon/aws-cli:2.17.52` | AWS CLI image used by the optional layout manifest upload job |

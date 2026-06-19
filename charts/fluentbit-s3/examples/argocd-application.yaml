@@ -35,7 +35,16 @@ spec:
         s3:
           bucket: my-rrpair-archive
           region: us-east-1
+          prefix: byoc
           credentialsSecret: byoc-s3
+
+        # Optional: write known workloads under namespace/app/time prefixes and
+        # publish _speedscale/byoc-layout.json for proxymock import auto-detect.
+        # layout:
+        #   enabled: true
+        #   workloads:
+        #     - namespace: banking-app
+        #       appLabel: banking-gateway
 
         # Option B: uncomment to use IRSA instead of static credentials.
         # irsa:

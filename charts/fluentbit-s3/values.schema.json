@@ -20,6 +20,11 @@
           "minLength": 1,
           "description": "AWS region where the bucket lives (e.g. us-east-1)"
         },
+        "prefix": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Base S3 prefix for archived OTLP JSON objects"
+        },
         "endpoint": {
           "type": "string",
           "description": "Custom S3 endpoint for non-AWS providers (e.g. https://nyc3.digitaloceanspaces.com). Leave empty for AWS S3."
@@ -74,6 +79,45 @@
           "type": "string",
           "minLength": 1,
           "description": "Must be opentelemetry-collector-contrib (awss3 is contrib-only)"
+        },
+        "awsCli": {
+          "type": "string",
+          "minLength": 1,
+          "description": "AWS CLI image used by the optional layout manifest upload job"
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable workload-aware S3 prefixes and publish _speedscale/byoc-layout.json"
+        },
+        "partition": {
+          "type": "string",
+          "enum": ["minute"],
+          "description": "Time partition granularity used by the awss3 exporter"
+        },
+        "workloads": {
+          "type": "array",
+          "description": "Known workloads to write under namespace/app/time prefixes",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["namespace", "appLabel"],
+            "properties": {
+              "namespace": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appLabel": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
         }
       }
     }

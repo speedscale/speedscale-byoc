@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   otel.yaml: |
+    {{- $layoutEnabled := and .Values.layout.enabled .Values.layout.workloads }}
+    {{- $s3Prefix := .Values.s3.prefix | default "byoc" }}
     receivers:
       otlp:
         # Both gRPC (4317) and HTTP (4318) — forwarder's byoc_s3 exporter
@@ -17,6 +19,22 @@ data:
 
     processors:
       batch: {}
+      {{- if $layoutEnabled }}
+      filter/byoc_unmatched:
+        error_mode: ignore
+        logs:
+          log_record:
+            {{- range .Values.layout.workloads }}
+            - 'body["tags"]["k8sAppPodNamespace"] == "{{ .namespace }}" and body["tags"]["k8sAppLabel"] == "{{ .appLabel }}"'
+            {{- end }}
+      {{- range .Values.layout.workloads }}
+      filter/byoc_{{ .appLabel }}:
+        error_mode: ignore
+        logs:
+          log_record:
+            - 'body["tags"]["k8sAppPodNamespace"] != "{{ .namespace }}" or body["tags"]["k8sAppLabel"] != "{{ .appLabel }}"'
+      {{- end }}
+      {{- end }}
 
     exporters:
       # Write RRPair objects directly to S3 via the collector's native awss3
@@ -26,12 +44,26 @@ data:
         s3uploader:
           region: {{ .Values.s3.region }}
           s3_bucket: {{ .Values.s3.bucket }}
-          s3_prefix: byoc
+          s3_prefix: {{ $s3Prefix }}
           {{- if .Values.s3.endpoint }}
           endpoint: {{ .Values.s3.endpoint }}
           s3_force_path_style: {{ .Values.s3.forcePathStyle | default false }}
           {{- end }}
         marshaler: otlp_json
+      {{- if $layoutEnabled }}
+      {{- range .Values.layout.workloads }}
+      awss3/byoc_{{ .appLabel }}:
+        s3uploader:
+          region: {{ $.Values.s3.region }}
+          s3_bucket: {{ $.Values.s3.bucket }}
+          s3_prefix: {{ $s3Prefix }}/namespace={{ .namespace }}/app={{ .appLabel }}
+          {{- if $.Values.s3.endpoint }}
+          endpoint: {{ $.Values.s3.endpoint }}
+          s3_force_path_style: {{ $.Values.s3.forcePathStyle | default false }}
+          {{- end }}
+        marshaler: otlp_json
+      {{- end }}
+      {{- end }}
       debug:
         verbosity: basic
 
@@ -44,8 +76,16 @@ data:
       pipelines:
         logs:
           receivers: [otlp]
-          processors: [batch]
+          processors: [{{ if $layoutEnabled }}filter/byoc_unmatched, {{ end }}batch]
           exporters: [awss3, debug]
+        {{- if $layoutEnabled }}
+        {{- range .Values.layout.workloads }}
+        logs/byoc_{{ .appLabel }}:
+          receivers: [otlp]
+          processors: [filter/byoc_{{ .appLabel }}, batch]
+          exporters: [awss3/byoc_{{ .appLabel }}, debug]
+        {{- end }}
+        {{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
