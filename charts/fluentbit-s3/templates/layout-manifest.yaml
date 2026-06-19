@@ -1,0 +1,89 @@
+{{- if and .Values.layout.enabled .Values.layout.workloads }}
+{{- $s3Prefix := .Values.s3.prefix | default "byoc" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: byoc-layout-manifest
+  namespace: {{ .Release.Namespace }}
+data:
+  byoc-layout.json: |
+    {
+      "version": "speedscale-byoc-v2",
+      "format": "otel_s3",
+      "basePrefix": "{{ $s3Prefix }}",
+      "partition": "{{ .Values.layout.partition | default "minute" }}",
+      "workloadPrefixTemplate": "namespace={{`{{namespace}}`}}/app={{`{{appLabel}}`}}",
+      "timePrefixTemplate": "year={{`{{yyyy}}`}}/month={{`{{MM}}`}}/day={{`{{dd}}`}}/hour={{`{{HH}}`}}/minute={{`{{mm}}`}}",
+      "attrs": {
+        "namespace": "tags.k8sAppPodNamespace",
+        "appLabel": "tags.k8sAppLabel"
+      },
+      "workloads": [
+        {{- range $i, $w := .Values.layout.workloads }}
+        {{- if $i }},{{ end }}
+        {
+          "namespace": "{{ $w.namespace }}",
+          "appLabel": "{{ $w.appLabel }}"
+        }
+        {{- end }}
+      ]
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: byoc-layout-manifest-upload
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: byoc-layout-manifest-upload
+    spec:
+      restartPolicy: OnFailure
+      {{- if and .Values.irsa.enabled .Values.irsa.roleArn }}
+      serviceAccountName: {{ .Values.irsa.serviceAccountName }}
+      {{- end }}
+      containers:
+        - name: upload
+          image: {{ .Values.image.awsCli }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              {{- if .Values.s3.forcePathStyle }}
+              aws configure set default.s3.addressing_style path
+              {{- end }}
+              aws s3 cp /layout/byoc-layout.json s3://{{ .Values.s3.bucket }}/_speedscale/byoc-layout.json \
+                --content-type application/json \
+                {{- if .Values.s3.endpoint }}
+                --endpoint-url {{ .Values.s3.endpoint }} \
+                {{- end }}
+                --region {{ .Values.s3.region }}
+          env:
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.s3.region }}
+            {{- if and (not .Values.irsa.enabled) .Values.s3.credentialsSecret }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.s3.credentialsSecret }}
+                  key: accessKeyId
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.s3.credentialsSecret }}
+                  key: secretAccessKey
+            {{- end }}
+          volumeMounts:
+            - name: layout
+              mountPath: /layout
+      volumes:
+        - name: layout
+          configMap:
+            name: byoc-layout-manifest
+{{- end }}
