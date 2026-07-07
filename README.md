@@ -10,6 +10,7 @@ Reference architecture Helm charts for Speedscale BYOC (Bring Your Own Cloud) �
 | [`charts/elasticsearch/`](charts/elasticsearch/) | OTel Collector → Elasticsearch → Kibana | Full-text search + Kibana Discover |
 | [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | OTel Collector → Fluent Bit → GCS | Durable GCS archive + BigQuery |
 | [`charts/fluentbit-s3/`](charts/fluentbit-s3/) | OTel Collector → Fluent Bit → S3 | Durable S3 archive + Athena |
+| [`charts/azureblob/`](charts/azureblob/) | OTel Collector → Azure Blob (native `azureblob` exporter) | Durable Azure Blob archive + lifecycle tiering |
 | [`charts/otlp/`](charts/otlp/) | OTel Collector → OTLP/HTTP (`otlphttp`) | Any OTLP-native vendor — Dynatrace, Datadog, Honeycomb, New Relic, … |
 
 All scenarios coexist in separate namespaces on the same cluster. Point the Forwarder's `byoc_<backend>` exporter at the backend's collector to choose where traffic goes.
@@ -105,7 +106,7 @@ exporter; only the logs endpoint URL and the auth header differ.
    preset to `charts/otlp/` — no template change needed.
 
 **Non-OTLP backend** (object storage, classic Loki/Elasticsearch) — add a
-dedicated chart with the appropriate exporter (`awss3` / `loki` /
+dedicated chart with the appropriate exporter (`awss3` / `azureblob` / `loki` /
 `elasticsearch`):
 
 1. Add `charts/<backend>/` with an OTel Collector whose pipeline exports
@@ -140,6 +141,12 @@ python3 scripts/gcs-gather.py \
 # S3 scenario
 python3 scripts/s3-gather.py \
   --bucket my-rrpair-archive --region us-east-1 --service my-service --start -1h \
+  --out-dir /tmp/snapshot
+
+# Azure Blob scenario
+python3 scripts/azure-gather.py \
+  --connection-string "$AZURE_STORAGE_CONNECTION_STRING" --container byoc \
+  --service my-service --start -1h \
   --out-dir /tmp/snapshot
 
 proxymock mock --in /tmp/snapshot
