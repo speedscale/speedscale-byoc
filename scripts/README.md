@@ -1,6 +1,8 @@
 # BYOC companion scripts
 
-Small, single-file Python tools for gathering RRPair traffic from each BYOC backend and writing a `proxymock`-replayable snapshot directory. All scripts require Python 3.9+ and only use the standard library — no `pip install`.
+Small, single-file Python tools for gathering RRPair traffic from each BYOC backend and writing a `proxymock`-replayable snapshot directory. All scripts require Python 3.9+ and only use the standard library, no `pip install`.
+
+> **Object storage is built into proxymock.** For S3, GCS, and other S3-compatible buckets, use `proxymock import s3` instead of a script. It reads the current OTel `awss3` layout and the legacy Fluent Bit layout, prunes by key prefix so it downloads only matching objects, and filters on service, namespace, status, endpoint, direction, trace ID, or a full Speedscale traffic filter. See the [S3](../charts/fluentbit-s3/README.md) and [GCS](../charts/fluentbit-gcs/README.md) chart READMEs. `gcs-gather.py` below is kept for existing workflows.
 
 ## `loki-gather.py`
 
