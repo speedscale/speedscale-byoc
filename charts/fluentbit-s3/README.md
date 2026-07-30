@@ -211,12 +211,12 @@ Always use `http://otel-collector.<namespace>.svc.cluster.local:4317`.
 
 The current chart does not expose byte-size flush controls. The Collector path prioritizes OTLP correctness over Fluent Bit's S3 chunk controls.
 
-**`s3-gather.py` returns zero records**
+**`proxymock import s3` returns zero RRPairs**
 
 - Confirm objects exist with `aws s3 ls`
-- Widen `--start` (e.g. `-2h`)
+- Widen `--from` (e.g. `now-2h`)
+- Check `--prefix`: `byoc/` for the current OTel layout, omit it for the legacy Fluent Bit layout with objects at the bucket root
 - Check `--service` matches the service field exactly (case-sensitive)
-- Pass `--dry-run` to see which S3 prefixes the time window resolves to
 
 ## Upgrade
 
@@ -236,18 +236,21 @@ Objects use the OTel `otlp_json` marshaler and Hive-style time partitions.
 ## Replay from the archive
 
 ```bash
-python3 ../../scripts/s3-gather.py \
+proxymock import s3 \
   --bucket   my-rrpair-archive \
+  --prefix   byoc/ \
   --region   us-east-1 \
   --service  java-server \
-  --status   2.. \
-  --start    -1h \
-  --out-dir  /tmp/snapshot
+  --status   200 \
+  --from     now-1h \
+  --out      /tmp/snapshot
 
 proxymock mock --in /tmp/snapshot
 ```
 
-Pass `--dry-run` first to see which S3 prefixes the window resolves to. See [`scripts/README.md`](../../scripts/README.md) for all options.
+Credentials come from the standard AWS environment chain, so an `AWS_PROFILE` or exported key pair both work.
+
+`--status` is an exact match here. For ranges, regexes, or anything else, use `--filter` with the Speedscale traffic filter language, for example `--filter '(service IS "java-server") AND (status IS "500")'`. Other filters: `--namespace`, `--endpoint`, `--direction`, `--trace-id`. Add `--follow` to keep importing as new objects land, and `--local-dir` to read a directory tree with the same layout instead of a bucket.
 
 ## Athena / Glue integration
 

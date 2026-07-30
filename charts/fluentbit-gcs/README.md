@@ -182,12 +182,13 @@ FB 3.1.x's `opentelemetry` input collapses each `ResourceLogs` batch into a sing
 
 Check Fluent Bit logs for upload errors. If logs show successful uploads but objects don't appear, verify the bucket name in `gcs.bucket` exactly matches the GCS bucket (case-sensitive, no `gs://` prefix).
 
-**`gcs-gather.py` returns zero records**
+**`proxymock import s3` returns zero RRPairs**
 
 - Confirm objects exist with `gcloud storage ls -r gs://<bucket>/**`
-- Widen `--start` (e.g. `-2h`)
-- Check that `--service` matches the `service` field in the NDJSON records exactly
-- Pass `--dry-run` to see which GCS partitions the time window resolves to
+- Widen `--from` (e.g. `now-2h`)
+- Check `--prefix`: `byoc/` for the current OTel layout, omit it for the legacy Fluent Bit layout with objects at the bucket root
+- Check that `--service` matches the `service` field in the records exactly
+- Confirm `--s3-endpoint-url https://storage.googleapis.com` and `--s3-force-path-style` are both set, and that the HMAC pair is exported as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
 
 ## Upgrade
 
@@ -227,17 +228,22 @@ The Hive-style partition keys (`year=`, `month=`, `day=`, `hour=`) are designed 
 ## Replay from the archive
 
 ```bash
-python3 ../../scripts/gcs-gather.py \
-  --bucket   my-rrpair-archive \
-  --service  java-server \
-  --status   2.. \
-  --start    -1h \
-  --out-dir  /tmp/snapshot
+proxymock import s3 \
+  --bucket              my-rrpair-archive \
+  --prefix              byoc/ \
+  --s3-endpoint-url     https://storage.googleapis.com \
+  --s3-force-path-style \
+  --service             java-server \
+  --status              200 \
+  --from                now-1h \
+  --out                 /tmp/snapshot
 
 proxymock mock --in /tmp/snapshot
 ```
 
-Pass `--dry-run` first to see which GCS partitions the window touches before downloading. See [`scripts/README.md`](../../scripts/README.md) for all options.
+Credentials come from the standard AWS environment chain, so export the HMAC pair as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+
+`--status` is an exact match here. For ranges, regexes, or anything else, use `--filter` with the Speedscale traffic filter language, for example `--filter '(service IS "java-server") AND (status IS "500")'`. Other filters: `--namespace`, `--endpoint`, `--direction`, `--trace-id`. Add `--follow` to keep importing as new objects land.
 
 ## Configuration reference
 

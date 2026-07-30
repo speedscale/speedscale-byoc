@@ -120,7 +120,24 @@ independent.
 
 ## Replay captured traffic with proxymock
 
-Each scenario ships a companion `scripts/<backend>-gather.py` that queries a time window of captured traffic and writes a [`proxymock`](https://docs.speedscale.com/proxymock/)-replayable directory:
+For the object-store scenarios, [`proxymock`](https://docs.speedscale.com/proxymock/) reads the archive directly with `proxymock import s3`. It understands both the current OTel `awss3` hive-style layout under `byoc/` and the legacy Fluent Bit layout, and filters server-side on the key prefixes so only matching objects are downloaded:
+
+```bash
+# S3 scenario
+proxymock import s3 --bucket my-rrpair-archive --prefix byoc/ \
+  --service my-service --from now-1h --out /tmp/snapshot
+
+# GCS scenario, over the S3-compatible XML API
+proxymock import s3 --bucket my-rrpair-archive --prefix byoc/ \
+  --s3-endpoint-url https://storage.googleapis.com --s3-force-path-style \
+  --service my-service --from now-1h --out /tmp/snapshot
+
+proxymock mock --in /tmp/snapshot
+```
+
+Filters beyond `--service` include `--namespace`, `--status`, `--endpoint`, `--direction`, `--trace-id`, and `--filter` for the full Speedscale traffic filter language. Add `--follow` to keep importing as new objects arrive, and `--dlp-config` to redact on the way in. `--local-dir` reads a directory tree with the same layout, which is useful for testing without bucket credentials.
+
+The query backends still use their companion scripts, since the traffic lives in Loki or Elasticsearch rather than object storage:
 
 ```bash
 # Grafana scenario
@@ -133,26 +150,14 @@ python3 scripts/es-gather.py \
   --es-url http://<node-ip>:30032 --service my-service --start -1h \
   --out-dir /tmp/snapshot
 
-# GCS scenario
-python3 scripts/gcs-gather.py \
-  --bucket my-rrpair-archive --service my-service --start -1h \
-  --out-dir /tmp/snapshot
-
-# S3 scenario
-python3 scripts/s3-gather.py \
-  --bucket my-rrpair-archive --region us-east-1 --service my-service --start -1h \
-  --out-dir /tmp/snapshot
-
 # Azure Blob scenario
 python3 scripts/azure-gather.py \
   --connection-string "$AZURE_STORAGE_CONNECTION_STRING" --container byoc \
   --service my-service --start -1h \
   --out-dir /tmp/snapshot
-
-proxymock mock --in /tmp/snapshot
 ```
 
-See [`scripts/README.md`](scripts/README.md) for all filter flags.
+See [`scripts/README.md`](scripts/README.md) for their filter flags.
 
 ## Bring your own AI
 
