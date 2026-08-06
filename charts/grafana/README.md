@@ -11,13 +11,29 @@ This reference architecture captures real traffic from your apps, ships it throu
 
 ```mermaid
 flowchart LR
-    apps([Your apps]) --> fwd[Speedscale Forwarder]
-    fwd --> col[OTel Collector]
-    col -->|full RRPairs as logs| loki[(Loki)]
-    col -->|derived metrics| prom[(Prometheus)]
-    loki --> grafana[Grafana]
-    prom --> grafana
+  subgraph Yours[Your infrastructure]
+    subgraph K8s[Kubernetes cluster<br/>GKE, EKS, AKS, or self-managed]
+      Apps[Application pods]
+      Cap[eBPF nettap / sidecar capture]
+      Fwd[Speedscale Forwarder<br/>DLP + filter rules]
+      OTel[OTel Collector<br/>OTLP gRPC :4317]
+      Loki[(Loki)]
+      Prom[(Prometheus)]
+      Graf[Grafana]
+    end
+  end
+  SC[Speedscale Cloud<br/>app.speedscale.com]
+
+  Apps --> Cap --> Fwd
+  Fwd -->|OTLP gRPC| OTel
+  OTel -->|full RRPairs as logs| Loki
+  OTel -->|derived metrics| Prom
+  Loki --> Graf
+  Prom --> Graf
+  Fwd -.->|control plane only:<br/>registration, DLP config| SC
 ```
+
+Capture, storage, and dashboard all run in your own cluster. The dashed link is control plane only: the Operator registers the cluster and the Forwarder fetches its DLP config at startup. No RRPair data crosses it.
 
 **Metrics.** The Collector derives two metrics from the RRPair log stream and remote-writes them to Prometheus — the forwarder sends nothing twice:
 

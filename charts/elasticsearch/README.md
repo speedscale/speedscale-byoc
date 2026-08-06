@@ -10,11 +10,26 @@ Sibling scenario: [`charts/grafana/`](../grafana/) does the same with Loki + Gra
 
 ```mermaid
 flowchart LR
-    apps([Your apps]) --> fwd[Speedscale Forwarder]
-    fwd --> col[OTel Collector]
-    col --> es[(Elasticsearch)]
-    es --> kibana[Kibana]
+  subgraph Yours[Your infrastructure]
+    subgraph K8s[Kubernetes cluster<br/>GKE, EKS, AKS, or self-managed]
+      Apps[Application pods]
+      Cap[eBPF nettap / sidecar capture]
+      Fwd[Speedscale Forwarder<br/>DLP + filter rules]
+      OTel[OTel Collector<br/>OTLP gRPC :4317]
+      ES[(Elasticsearch)]
+      Kibana[Kibana]
+    end
+  end
+  SC[Speedscale Cloud<br/>app.speedscale.com]
+
+  Apps --> Cap --> Fwd
+  Fwd -->|OTLP gRPC| OTel
+  OTel --> ES
+  ES --> Kibana
+  Fwd -.->|control plane only:<br/>registration, DLP config| SC
 ```
+
+RRPairs never leave your infrastructure — capture, storage, and dashboard all run in your own cluster. The dashed link is control plane only: the Operator registers the cluster and the Forwarder fetches its DLP config at startup. No RRPair data crosses it.
 
 **Replay.** `es-gather.py` queries any subset of Elasticsearch back out and writes a `proxymock`-readable directory. Same real traffic you captured drives your tests.
 

@@ -17,18 +17,24 @@ or proxymock replay — without a live query backend.
 
 ```mermaid
 flowchart LR
-  subgraph K8s[BYOC Kubernetes cluster]
-    Apps[Application pods]
-    Cap[eBPF nettap / sidecar capture]
-    Fwd[Speedscale Forwarder<br/>DLP + filter rules]
-    OTel[OTel Collector<br/>OTLP gRPC :4317]
+  subgraph Yours[Your infrastructure]
+    subgraph K8s[Kubernetes cluster<br/>GKE, EKS, AKS, or self-managed]
+      Apps[Application pods]
+      Cap[eBPF nettap / sidecar capture]
+      Fwd[Speedscale Forwarder<br/>DLP + filter rules]
+      OTel[OTel Collector<br/>OTLP gRPC :4317]
+    end
+    S3[(S3 bucket<br/>your AWS account<br/>OTLP JSON objects)]
   end
-  S3[(S3 bucket<br/>OTLP JSON objects)]
+  SC[Speedscale Cloud<br/>app.speedscale.com]
 
   Apps --> Cap --> Fwd
   Fwd -->|OTLP gRPC| OTel
   OTel -->|PutObject| S3
+  Fwd -.->|control plane only:<br/>registration, DLP config| SC
 ```
+
+RRPairs never leave your infrastructure — the capture path terminates in your own S3 bucket. The dashed link is control plane only: the Operator registers the cluster and the Forwarder fetches its DLP config at startup. No RRPair data crosses it.
 
 ## Prerequisites
 
