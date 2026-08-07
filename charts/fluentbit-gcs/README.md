@@ -12,20 +12,26 @@ Elasticsearch or Loki.
 
 ```mermaid
 flowchart LR
-  subgraph K8s[BYOC Kubernetes cluster]
-    Apps[Application pods]
-    Cap[eBPF nettap / sidecar capture]
-    Fwd[Speedscale Forwarder<br/>DLP + filter rules]
-    OTel[OTel Collector<br/>OTLP gRPC :4317]
-    FB[Fluent Bit<br/>opentelemetry input :4318]
+  subgraph Yours[Your infrastructure]
+    subgraph K8s[Kubernetes cluster<br/>GKE, EKS, AKS, or self-managed]
+      Apps[Application pods]
+      Cap[eBPF nettap / sidecar capture]
+      Fwd[Speedscale Forwarder<br/>DLP + filter rules]
+      OTel[OTel Collector<br/>OTLP gRPC :4317]
+      FB[Fluent Bit<br/>opentelemetry input :4318]
+    end
+    GCS[(GCS bucket<br/>your GCP project<br/>NDJSON.gz objects)]
   end
-  GCS[(GCS bucket<br/>NDJSON.gz objects)]
+  SC[Speedscale Cloud<br/>app.speedscale.com]
 
   Apps --> Cap --> Fwd
   Fwd -->|OTLP gRPC| OTel
   OTel -->|OTLP HTTP| FB
   FB -->|PutObject<br/>XML API| GCS
+  Fwd -.->|control plane only:<br/>registration, DLP config| SC
 ```
+
+RRPairs never leave your infrastructure — the capture path terminates in your own GCS bucket. The dashed link is control plane only: the Operator registers the cluster and the Forwarder fetches its DLP config at startup. No RRPair data crosses it.
 
 `charts/grafana/` and `charts/elasticsearch/` (sibling scenarios) are live-query
 backends — you see traffic in a dashboard. This scenario is the **archive**

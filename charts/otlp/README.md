@@ -11,18 +11,24 @@ this is **one parameterized chart** configured by a per-vendor values preset
 
 ```mermaid
 flowchart LR
-  subgraph K8s[BYOC Kubernetes cluster]
-    Apps[Application pods]
-    Cap[eBPF nettap / sidecar capture]
-    Fwd[Speedscale Forwarder<br/>DLP + filter rules]
-    OTel[OTel Collector<br/>OTLP gRPC :4317 / HTTP :4318]
+  subgraph Yours[Your infrastructure]
+    subgraph K8s[Kubernetes cluster<br/>GKE, EKS, AKS, or self-managed]
+      Apps[Application pods]
+      Cap[eBPF nettap / sidecar capture]
+      Fwd[Speedscale Forwarder<br/>DLP + filter rules]
+      OTel[OTel Collector<br/>OTLP gRPC :4317 / HTTP :4318]
+    end
   end
   Vendor[(OTLP-native backend<br/>Dynatrace / Datadog /<br/>Honeycomb / New Relic / …)]
+  SC[Speedscale Cloud<br/>app.speedscale.com]
 
   Apps --> Cap --> Fwd
   Fwd -->|OTLP gRPC| OTel
   OTel -->|OTLP/HTTP<br/>otlphttp exporter| Vendor
+  Fwd -.->|control plane only:<br/>registration, DLP config| SC
 ```
+
+Unlike the object-storage and in-cluster scenarios, this one **does** send RRPairs outside your infrastructure — to your chosen observability vendor. Set `dlp_config_id` and `filter_rule` on the exporter accordingly. The dashed link is control plane only: the Operator registers the cluster and the Forwarder fetches its DLP config at startup. No RRPair data crosses it.
 
 The forwarder's `byoc_<vendor>` exporter ships RRPairs over OTLP gRPC into this
 chart's Collector, which re-exports them over OTLP/HTTP to the vendor's logs
