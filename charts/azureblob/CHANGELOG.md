@@ -12,8 +12,9 @@ First public release on Artifact Hub.
 - ArtifactHub annotations in Chart.yaml.
 
 ### Notes
-- **Pins `otel/opentelemetry-collector-contrib:0.123.0` — newer than the sibling
-  charts (0.108.0).** The `azureblob` exporter is alpha and was added to
-  opentelemetry-collector-contrib in v0.121.0, so the 0.108.0 image used by the
-  GCS/S3 charts does not contain it. 0.123.0 is a released tag that includes the
+- **Pins `otel/opentelemetry-collector-contrib:0.153.0` — newer than the sibling
+  charts (0.108.0).** The `azureblob` exporter is alpha and did not ship in the
+  otelcol-contrib image until ~v0.153.0, so the 0.108.0 image used by the
+  GCS/S3 charts does not contain it (and 0.123.0 fails with
+  `unknown type: azureblob`). 0.153.0 is a released tag that includes the
   exporter.

@@ -54,9 +54,9 @@ The scenarios coexist in their own namespaces; flip the forwarder's
 `byoc_azure.otel_endpoint` to switch which one receives traffic.
 
 > **Collector image is newer than the sibling charts.** The `azureblob`
-> exporter is **alpha** and was added to opentelemetry-collector-contrib in
-> **v0.121.0**, so the `0.108.0` image used by the GCS/S3 charts does not
-> contain it. This chart pins `otel/opentelemetry-collector-contrib:0.123.0`,
+> exporter is **alpha** and did not ship in the otelcol-contrib image until
+> **~v0.153.0**, so the `0.108.0` image used by the GCS/S3 charts does not
+> contain it. This chart pins `otel/opentelemetry-collector-contrib:0.153.0`,
 > a released tag that includes the exporter.
 
 ## Prerequisites
@@ -189,7 +189,7 @@ Always use `http://otel-collector.<namespace>.svc.cluster.local:4317`, not a bar
 
 **Unknown exporter `azureblob` / collector crashloops on startup**
 
-The `azureblob` exporter is alpha and only exists in opentelemetry-collector-contrib **v0.121.0+**. If you overrode `image.otelCollector` to an older tag (e.g. the 0.108.0 used by the GCS/S3 charts), the collector won't recognize the exporter. Use 0.121.0 or newer; this chart defaults to 0.123.0.
+The `azureblob` exporter is alpha and does not ship in the otelcol-contrib image until **~v0.153.0** (0.123.0 fails with `unknown type: azureblob`). If you overrode `image.otelCollector` to an older tag (e.g. the 0.108.0 used by the GCS/S3 charts), the collector won't recognize the exporter. Use 0.153.0 or newer; this chart defaults to 0.153.0.
 
 **Authentication errors**
 
@@ -229,4 +229,4 @@ chart tracks a newer collector image than the sibling charts.
 | `azure.url` | `https://CHANGEME.blob.core.windows.net/` | Storage account blob URL. `connection_string` overrides this, but it must be set. |
 | `azure.container` | `byoc` | Blob container to write RRPairs into (must exist before installing) |
 | `azure.connectionStringSecret` | `byoc-azureblob` | Name of the K8s Secret with the `connectionString` key |
-| `image.otelCollector` | `otel/opentelemetry-collector-contrib:0.123.0` | OTel Collector image — must be contrib **≥ 0.121.0** (azureblob exporter is alpha and contrib-only) |
+| `image.otelCollector` | `otel/opentelemetry-collector-contrib:0.153.0` | OTel Collector image — must be contrib **≥ 0.153.0** (azureblob exporter is alpha and contrib-only) |
