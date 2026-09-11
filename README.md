@@ -11,6 +11,7 @@ Reference architecture Helm charts for Speedscale BYOC (Bring Your Own Cloud) �
 | [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | OTel Collector → Fluent Bit → GCS | Durable GCS archive + BigQuery |
 | [`charts/fluentbit-s3/`](charts/fluentbit-s3/) | OTel Collector → Fluent Bit → S3 | Durable S3 archive + Athena |
 | [`charts/azureblob/`](charts/azureblob/) | OTel Collector → Azure Blob (native `azureblob` exporter) | Durable Azure Blob archive + lifecycle tiering |
+| [`charts/gcs-datadog/`](charts/gcs-datadog/) | OTel Collector → native GCS + Datadog trace links | Full traffic in GCS with lightweight APM correlation logs |
 | [`charts/otlp/`](charts/otlp/) | OTel Collector → OTLP/HTTP (`otlphttp`) | Any OTLP-native vendor — Dynatrace, Datadog, Honeycomb, New Relic, … |
 
 All scenarios coexist in separate namespaces on the same cluster. Point the Forwarder's `byoc_<backend>` exporter at the backend's collector to choose where traffic goes.
@@ -60,6 +61,8 @@ Internal Collector fan-out (`exporters: [a, b]`) is reserved for multiple
 signals of the **same** backend — e.g. the `grafana` chart's Collector emits
 both Loki logs and derived Prometheus metrics. A **different** backend always
 gets its own Collector; never add it as a branch on another backend's pipeline.
+
+The `gcs-datadog` reference is a paired archive and correlation workflow: full records go to GCS, while Datadog receives only a URL log pointing to the archive. It has its own collector and forwarder exporter.
 
 ### Running multiple backends
 

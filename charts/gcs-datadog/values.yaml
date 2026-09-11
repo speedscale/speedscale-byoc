@@ -1,0 +1,21 @@
+image: otel/opentelemetry-collector-contrib:0.160.0@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6
+gcs:
+  project: example-project
+  bucket: example-traffic
+  region: us-central1
+  prefix: byoc
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+datadog:
+  enabled: true
+  site: datadoghq.com
+  credentialsSecret: datadog-api-key
+  apiKeyField: api-key
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi

@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "gcs",
+    "datadog"
+  ],
+  "properties": {
+    "gcs": {
+      "type": "object",
+      "required": [
+        "project",
+        "bucket",
+        "region",
+        "prefix"
+      ],
+      "properties": {
+        "project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bucket": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9._-]+[a-z0-9]$"
+        },
+        "region": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$"
+        }
+      }
+    },
+    "datadog": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "site",
+        "credentialsSecret",
+        "apiKeyField"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "site": {
+          "type": "string",
+          "minLength": 1
+        },
+        "credentialsSecret": {
+          "type": "string",
+          "minLength": 1
+        },
+        "apiKeyField": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
