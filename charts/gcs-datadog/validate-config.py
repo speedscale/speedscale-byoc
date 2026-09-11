@@ -14,6 +14,8 @@ for enabled in (True, False):
     config = next(item for item in objects if item["kind"] == "ConfigMap")["data"]["otel.yaml"]
     image = next(item for item in objects if item["kind"] == "Deployment")["spec"]["template"]["spec"]["containers"][0]["image"]
     with tempfile.TemporaryDirectory() as folder:
+        Path(folder).chmod(0o755)
         Path(folder, "otel.yaml").write_text(config)
+        Path(folder, "otel.yaml").chmod(0o644)
         subprocess.run(["docker", "run", "--rm", "--network=none", "-e", "DD_API_KEY=" + "0" * 32, "-v", f"{folder}:/conf:ro", image, "validate", "--config=/conf/otel.yaml"], check=True)
     print(json.dumps({"datadog": enabled, "status": "valid"}))
