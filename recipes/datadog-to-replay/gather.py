@@ -66,19 +66,22 @@ def search(site, headers, signal, query):
         page = {"limit": 100}
         if cursor:
             page["cursor"] = cursor
+        body = {
+            "filter": {"from": "now-24h", "to": "now", "query": query},
+            "sort": "timestamp",
+            "page": page,
+        }
+        if signal == "spans":
+            body = {"data": {"attributes": body, "type": "search_request"}}
         data = json.loads(
             request(
                 f"https://api.{site}/api/v2/{signal}/events/search",
                 headers,
-                {
-                    "filter": {"from": "now-24h", "to": "now", "query": query},
-                    "sort": "timestamp",
-                    "page": page,
-                },
+                body,
             )
         )
         results.extend(data.get("data", []))
-        cursor = data.get("meta", {}).get("page", {}).get("after")
+        cursor = ((data.get("meta") or {}).get("page") or {}).get("after")
         if not cursor:
             return results
     raise ValueError("Query exceeded 5000 records; narrow the trace selection")

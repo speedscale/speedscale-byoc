@@ -77,4 +77,4 @@ real regression.
 
 ## Datadog capture links to tests and mocks
 
-The [Datadog-to-replay recipe](datadog-to-replay/README.md) queries partner-account APM spans and capture logs, retrieves the linked RRPairs from GCS, and separates incoming test traffic from outgoing dependency mocks. It includes fixture tests and a microsvc demonstration sequence; live replay qualification is still pending.
+The [Datadog-to-replay recipe](datadog-to-replay/README.md) queries partner-account APM spans and capture logs, retrieves the linked RRPairs from GCS, and separates incoming test traffic from outgoing dependency mocks. It includes conversion regression tests and a microsvc gateway demonstration verified with baseline pass, injected dependency failure, and recovery pass.

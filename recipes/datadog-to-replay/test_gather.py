@@ -54,6 +54,22 @@ def archive():
 
 
 class GatherTests(unittest.TestCase):
+    def test_spans_request_envelope_and_null_page(self):
+        def request(url, headers, body):
+            self.assertEqual(body["data"]["type"], "search_request")
+            self.assertEqual(
+                body["data"]["attributes"]["filter"]["query"], "trace_id:test"
+            )
+            return json.dumps(
+                {"data": [{"id": "span"}], "meta": {"page": None}}
+            ).encode()
+
+        with patch.object(gather, "request", side_effect=request):
+            self.assertEqual(
+                gather.search("datadoghq.com", {}, "spans", "trace_id:test"),
+                [{"id": "span"}],
+            )
+
     def test_rejects_foreign_capture_links(self):
         for link in [
             LINK.replace("console.cloud.google.com", "attacker.example"),
