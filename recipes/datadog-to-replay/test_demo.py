@@ -60,3 +60,21 @@ class DemoTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EmptyGetNormalizationTests(unittest.TestCase):
+    def test_only_known_empty_body_marker_is_removed(self):
+        import base64
+        def record(body, method="GET", modified=True):
+            return {"dlpModified": modified, "http": {"req": {
+                "method": method, "bodyBase64": base64.b64encode(json.dumps(body).encode()).decode()
+            }, "res": {"statusCode": 200, "body": "unchanged"}}}
+        marker = {"$api_key": "REDACTED-UNRECOGNIZED-e3b0c44298fc1c149afb"}
+        sample = record(marker)
+        self.assertTrue(demo.normalize_empty_get(sample))
+        self.assertNotIn("bodyBase64", sample["http"]["req"])
+        self.assertEqual(sample["http"]["res"]["body"], "unchanged")
+        for sample in [record(marker, "POST"), record(marker, modified=False),
+                       record({"$api_key": "another-value"}), record({"balance": 1})]:
+            self.assertFalse(demo.normalize_empty_get(sample))
+            self.assertIn("bodyBase64", sample["http"]["req"])

@@ -124,8 +124,23 @@ def report(out, source, results, started):
     )
     page = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Speedscale + Datadog demo</title>
 <style>body{{background:#101827;color:#eef3fa;font:18px system-ui;margin:0}}main{{max-width:1050px;margin:50px auto;padding:24px}}.eyebrow,small{{color:#b5c6d8}}h1{{font-size:48px;line-height:1.1;max-width:800px}}.flow{{padding:24px 0;color:#70e0c0;font-size:22px}}.cards{{display:flex;gap:18px;flex-wrap:wrap}}article{{background:#1c2a3b;padding:24px;flex:1;min-width:210px;border-radius:12px}}h2{{font-size:48px;margin:12px 0}}a{{display:inline-block;color:#91caff;margin:18px 22px 18px 0}}code{{overflow-wrap:anywhere}}.detail{{line-height:1.6;color:#b5c6d8}}footer{{margin-top:32px;font-size:14px}}</style>
-<main><div class="eyebrow">SPEEDSCALE + DATADOG · {html.escape(title)}</div><h1>Turn one observed request into a regression test.</h1><p>GET /api/accounts · microsvc banking application</p><div class="flow">APM trace → Capture log → GCS recording → Test + dependency mock</div><div class="cards">{cards}</div>{anchors}<p class="detail">Select the dedicated Datadog partner account. Links show the original captured GKE request; this local replay exports no telemetry.</p><p class="detail">The application SDK creates APM spans. Speedscale captures request and response payloads. The trace ID joins those records. The same expected response is used in every replay.</p><p class="detail">Dependency passthrough is disabled. Local Redis supports the gateway. Authentication is re-signed in a local copy for an isolated demo gateway; original recordings and expected responses are unchanged.</p><footer>Run: {html.escape(started)}<br>Capture retrieved: {html.escape(source["retrieved_at"])}<br>Trace: <code>{html.escape(trace)}</code><br>One HTTP scenario, using the development capture harness. This report records an executed run; it is not a live Datadog dashboard.</footer></main></html>"""
+<main><div class="eyebrow">SPEEDSCALE + DATADOG · {html.escape(title)}</div><h1>Turn one observed request into a regression test.</h1><p>GET /api/accounts · microsvc banking application</p><div class="flow">APM trace → Capture log → GCS recording → Test + dependency mock</div><div class="cards">{cards}</div>{anchors}<p class="detail">Select the dedicated Datadog partner account. Links show the original captured request; this local replay exports no telemetry.</p><p class="detail">The application SDK creates APM spans. Speedscale captures request and response payloads. The trace ID joins those records. The same expected response is used in every replay.</p><p class="detail">Dependency passthrough is disabled. Local Redis supports the gateway. Authentication is re-signed in a local copy for an isolated demo gateway. The local mock removes only a recognized DLP marker for an empty GET body. Original recordings and expected responses are unchanged.</p><footer>Run: {html.escape(started)}<br>Capture retrieved: {html.escape(source["retrieved_at"])}<br>Trace: <code>{html.escape(trace)}</code><br>One HTTP scenario, using the development capture harness. This report records an executed run; it is not a live Datadog dashboard.</footer></main></html>"""
     (out / "report.html").write_text(page)
+
+
+def normalize_empty_get(record):
+    req = record["http"]["req"]
+    marker = {"$api_key": "REDACTED-UNRECOGNIZED-e3b0c44298fc1c149afb"}
+    if req.get("method") != "GET" or not record.get("dlpModified"):
+        return False
+    try:
+        body = json.loads(base64.b64decode(req.get("bodyBase64", "")))
+    except (ValueError, UnicodeDecodeError):
+        return False
+    if body != marker:
+        return False
+    req.pop("bodyBase64", None)
+    return True
 
 
 def main():
@@ -176,6 +191,11 @@ def main():
                 parser.error(f"Port {port} is occupied; stop its demo process first")
     out.mkdir(parents=True, exist_ok=False, mode=0o700)
     (out / "tests").mkdir()
+    (out / "mocks").mkdir()
+    normalized = normalize_empty_get(outgoing)
+    (out / "mocks" / mocks[0].name).write_text(json.dumps(outgoing))
+    if normalized:
+        print("Local mock: removed the DLP marker for an empty GET body; archive unchanged.", flush=True)
     secret = secrets.token_urlsafe(48)
     local_auth(incoming, secret)
     (out / "tests" / tests[0].name).write_text(json.dumps(incoming))
@@ -272,7 +292,7 @@ def main():
                 args.proxymock,
                 "mock",
                 "--in",
-                str(capture / "mocks"),
+                str(out / "mocks"),
                 "--out",
                 str(out / ("mock-" + phase)),
                 "--no-passthrough",
