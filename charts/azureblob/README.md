@@ -10,6 +10,12 @@ a live query backend like Elasticsearch or Loki.
 The collector's native `azureblob` exporter writes blobs directly; no Fluent
 Bit and no in-cluster storage.
 
+## proxymock pull support
+
+This chart supports storage archival, but proxymock cannot pull directly from Azure Blob Storage. Azure Blob Storage does not expose an S3-compatible API, so `proxymock import s3`, the `pull_byoc_bucket` MCP tool, and the `proxymock web` BYOC source picker do not support this backend. An Azure Blob URL cannot be used as `--s3-endpoint-url`.
+
+Use [`scripts/azure-gather.py`](../../scripts/azure-gather.py) for manual retrieval. Its usage examples and prerequisites are documented at the top of the script. This script is a separate retrieval workflow; there is no native `proxymock import azureblob` command. Choose the S3 or GCS chart if your workflow requires a direct proxymock bucket pull.
+
 ## Architecture
 
 ```mermaid
