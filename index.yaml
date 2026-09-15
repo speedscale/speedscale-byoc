@@ -223,6 +223,17 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-s3-1.0.0/fluentbit-s3-1.0.0.tgz
     version: 1.0.0
+  gcs-datadog:
+  - apiVersion: v2
+    appVersion: 0.160.0
+    created: "2026-09-15T14:59:23.651917623Z"
+    description: Native GCS traffic archive with optional Datadog trace correlation.
+    digest: 9fd826064ba30091a854fc272cc77ef835b17c0cdd6b968f6fcbff9cf69aa78f
+    name: gcs-datadog
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/gcs-datadog-0.1.0/gcs-datadog-0.1.0.tgz
+    version: 0.1.0
   grafana:
   - annotations:
       artifacthub.io/category: infrastructure
@@ -288,4 +299,4 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/otlp-1.0.0/otlp-1.0.0.tgz
     version: 1.0.0
-generated: "2026-06-19T16:13:24.509638124Z"
+generated: "2026-09-15T14:59:24.146435759Z"
