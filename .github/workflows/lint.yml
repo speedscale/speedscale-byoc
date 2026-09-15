@@ -38,3 +38,8 @@ jobs:
           for chart in charts/*/; do
             helm lint --strict "$chart"
           done
+
+      - name: Validate native GCS and Datadog collector configurations
+        run: |
+          python3 -m pip install PyYAML==6.0.3
+          python3 charts/gcs-datadog/validate-config.py

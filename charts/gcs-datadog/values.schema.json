@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "gcs",
+    "datadog",
+    "profile"
+  ],
+  "properties": {
+    "gcs": {
+      "type": "object",
+      "required": [
+        "project",
+        "bucket",
+        "region",
+        "prefix"
+      ],
+      "properties": {
+        "project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bucket": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9._-]+[a-z0-9]$"
+        },
+        "region": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$"
+        }
+      }
+    },
+    "datadog": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "site",
+        "credentialsSecret",
+        "apiKeyField"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "site": {
+          "type": "string",
+          "minLength": 1
+        },
+        "credentialsSecret": {
+          "type": "string",
+          "minLength": 1
+        },
+        "apiKeyField": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "profile": {
+      "type": "string",
+      "enum": [
+        "archive",
+        "trace-correlation"
+      ]
+    },
+    "reader": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "image",
+        "serviceAccount",
+        "rbac"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string"
+        },
+        "serviceAccount": {
+          "type": "object",
+          "required": [
+            "create",
+            "name",
+            "annotations"
+          ],
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "rbac": {
+          "type": "object",
+          "required": [
+            "create",
+            "subjects"
+          ],
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "subjects": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "User",
+                      "Group",
+                      "ServiceAccount"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "image": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "datadog": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "profile": {
+            "const": "trace-correlation"
+          }
+        }
+      }
+    }
+  ]
+}

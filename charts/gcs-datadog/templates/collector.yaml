@@ -1,0 +1,63 @@
+{{- if .Values.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "gcs-datadog.serviceAccount" . }}
+  annotations: {{ toYaml .Values.serviceAccount.annotations | nindent 4 }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gcs-datadog.name" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "gcs-datadog.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "gcs-datadog.name" . }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "gcs-datadog.serviceAccount" . }}
+      containers:
+        - name: collector
+          image: {{ .Values.image }}
+          args: ["--config=/conf/otel.yaml"]
+          {{- if .Values.datadog.enabled }}
+          env:
+            - name: DD_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.datadog.credentialsSecret }}
+                  key: {{ .Values.datadog.apiKeyField }}
+          {{- end }}
+          resources: {{ toYaml .Values.resources | nindent 12 }}
+          ports:
+            - {name: grpc, containerPort: 4317}
+            - {name: http, containerPort: 4318}
+            - {name: health, containerPort: 13133}
+          readinessProbe:
+            httpGet: {path: /, port: health}
+          livenessProbe:
+            httpGet: {path: /, port: health}
+          volumeMounts:
+            - {name: config, mountPath: /conf, readOnly: true}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "gcs-datadog.name" . }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gcs-datadog.name" . }}
+spec:
+  selector:
+    app: {{ include "gcs-datadog.name" . }}
+  ports:
+    - {name: grpc, port: 4317, targetPort: grpc}
+    - {name: http, port: 4318, targetPort: http}

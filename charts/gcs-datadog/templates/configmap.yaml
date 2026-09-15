@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "gcs-datadog.name" . }}
+  labels:
+    app.kubernetes.io/part-of: speedscale-byoc
+    byoc.speedscale.com/provider: gcs
+  {{- if .Values.reader.enabled }}
+  annotations:
+    byoc.speedscale.com/reader-pod: {{ printf "%s-0" (include "gcs-datadog.readerName" .) | quote }}
+  {{- end }}
+data:
+  otel.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 400
+        spike_limit_mib: 80
+      {{- if eq .Values.profile "trace-correlation" }}
+      filter/traced:
+        error_mode: propagate
+        logs:
+          log_record:
+            - 'log.trace_id == TraceID(0x00000000000000000000000000000000)'
+            - 'resource.attributes["service.name"] == nil'
+            - 'resource.attributes["service.name"] == ""'
+            - 'not IsMatch(resource.attributes["service.name"], "^[A-Za-z0-9][A-Za-z0-9._-]*$")'
+      transform/routing:
+        error_mode: propagate
+        log_statements:
+          - context: log
+            statements:
+              - set(log.attributes["service.name"], resource.attributes["service.name"])
+              - set(log.attributes["trace_id"], log.trace_id.string)
+      groupbyattrs:
+        keys: [service.name, trace_id]
+      transform/prefix:
+        error_mode: propagate
+        log_statements:
+          - context: resource
+            statements:
+              - set(resource.attributes["gcs.prefix"], Concat([resource.attributes["service.name"], resource.attributes["trace_id"]], "/"))
+      {{- end }}
+      batch/gcs:
+        # Dynamic trace routing requires one resource per export request.
+        send_batch_size: {{ if eq .Values.profile "trace-correlation" }}1{{ else }}1000{{ end }}
+        send_batch_max_size: {{ if eq .Values.profile "trace-correlation" }}1{{ else }}1000{{ end }}
+        timeout: 1s
+      {{- if eq .Values.profile "trace-correlation" }}
+      transform/correlation:
+        error_mode: propagate
+        log_statements:
+          - context: log
+            statements:
+              - set(log.body, Concat(["https://console.cloud.google.com/storage/browser/", {{ .Values.gcs.bucket | quote }}, "/", {{ .Values.gcs.prefix | quote }}, "/", resource.attributes["gcs.prefix"]], ""))
+      batch/datadog:
+        timeout: 1s
+        send_batch_size: 100
+      {{- end }}
+    exporters:
+      google_cloud_storage:
+        bucket:
+          project_id: {{ .Values.gcs.project | quote }}
+          name: {{ .Values.gcs.bucket | quote }}
+          region: {{ .Values.gcs.region | quote }}
+          reuse_if_exists: true
+          compression: gzip
+          file_prefix: logs
+          partition:
+            prefix: {{ .Values.gcs.prefix | quote }}
+            format: year=%Y/month=%m/day=%d/hour=%H/minute=%M
+        {{- if eq .Values.profile "trace-correlation" }}
+        resource_attrs_to_gcs:
+          prefix: gcs.prefix
+        {{- end }}
+        timeout: 30s
+        sending_queue:
+          enabled: true
+          queue_size: 1000
+        retry_on_failure:
+          enabled: true
+          max_elapsed_time: 300s
+      {{- if .Values.datadog.enabled }}
+      datadog:
+        api:
+          site: {{ .Values.datadog.site | quote }}
+          key: ${env:DD_API_KEY}
+      {{- else if eq .Values.profile "trace-correlation" }}
+      debug/correlation:
+        verbosity: detailed
+      {{- end }}
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+    service:
+      extensions: [health_check]
+      pipelines:
+        logs/gcs:
+          receivers: [otlp]
+          processors: [memory_limiter, {{ if eq .Values.profile "trace-correlation" }}filter/traced, transform/routing, groupbyattrs, transform/prefix, {{ end }}batch/gcs]
+          exporters: [google_cloud_storage]
+        {{- if eq .Values.profile "trace-correlation" }}
+        logs/correlation:
+          receivers: [otlp]
+          processors: [memory_limiter, filter/traced, transform/routing, groupbyattrs, transform/prefix, transform/correlation, batch/datadog]
+          exporters: [{{ if .Values.datadog.enabled }}datadog{{ else }}debug/correlation{{ end }}]
+        {{- end }}
+        {{- if .Values.datadog.enabled }}
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch/datadog]
+          exporters: [datadog]
+        {{- end }}
