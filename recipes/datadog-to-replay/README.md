@@ -42,51 +42,22 @@ The tests cover source-link validation, mixed-trace rejection, payload/header pr
 
 This recipe belongs with the BYOC capture and retrieval workflow. Cluster-specific deployment configuration lives in demo-infra; the application remains in microsvc. Unlike `scripts/datadog-gather.py`, which reads full RRPair bodies from Datadog, this recipe resolves GCS links from correlation logs.
 
-## Run the local gateway demonstration
+## Run the demo
 
-Use a captured successful `GET /api/accounts` with an outgoing `banking-accounts` HTTP recording. These commands were verified on Docker Desktop with `ghcr.io/speedscale/microsvc/api-gateway:v1.4.128`. Run proxymock from the microsvc application checkout. Set `CAPTURE` to the absolute retrieval output directory and `PROXYMOCK` to the executable in each terminal. Output directories must be new for each run.
-
-In the first terminal, serve the captured dependency:
+After retrieving a capture, run the complete demonstration with one command. Use a successful `GET /api/accounts` trace with one incoming gateway request and one outgoing `banking-accounts` HTTP recording.
 
 ```bash
-export CAPTURE=/absolute/path/to/capture
-export PROXYMOCK="$HOME/.speedscale/proxymock"
-"$PROXYMOCK" mock --in "$CAPTURE/mocks" --out "$CAPTURE/mock-baseline" \
-  --no-passthrough --map 18082=http://banking-accounts:80 \
-  --proxy-out-port 14140 --health-port 14141
+python3 demo.py --capture /absolute/path/to/capture \
+  --app-dir /absolute/path/to/microsvc \
+  --out runs/demo-rehearsal
 ```
 
-In the second terminal, start the gateway and Redis:
+Add `--interactive` to pause before each phase while presenting. The output directory must be new. Docker Desktop must be running, and ports 18080, 18082, 14140, and 14141 must be free. Python 3.9+, Docker, and `~/.speedscale/proxymock` are required; use `--proxymock` to override its path. The runner launches proxymock from the supplied application checkout and pins the gateway v1.4.128 and Redis images by digest.
 
-```bash
-docker network create dd-replay-validation
-docker run -d --name dd-replay-redis --network dd-replay-validation redis:7-alpine
-docker run -d --name dd-replay-gateway --network dd-replay-validation \
-  --add-host banking-accounts:host-gateway -p 127.0.0.1:18080:8080 \
-  -e REDIS_HOST=dd-replay-redis \
-  -e ACCOUNTS_SERVICE_URL=http://banking-accounts:18082 \
-  -e OTEL_SDK_DISABLED=true -e OTEL_TRACES_EXPORTER=none \
-  -e OTEL_METRICS_EXPORTER=none -e OTEL_LOGS_EXPORTER=none \
-  -e LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY=INFO \
-  --entrypoint /bin/sh ghcr.io/speedscale/microsvc/api-gateway:v1.4.128 \
-  -c 'exec java -Xms64m -Xmx128m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC org.springframework.boot.loader.launch.JarLauncher'
-```
+The runner starts an isolated gateway and Redis, serves the captured dependency with passthrough disabled, and checks the baseline, injected 503, and recovery in sequence. It requires the expected status, body match, and process exit code for every phase. A failure from another cause stops the demonstration. Temporary containers, network, and mock processes are cleaned up automatically.
 
-Wait for the gateway to listen on port 18080. Preserve `banking-accounts` in the URL: substituting `host.docker.internal` changes the mock signature and produces a fail-closed 404. Redis runs locally; no live account service is used. This gateway-only replay disables local telemetry export; the demonstrated APM trace is the original GKE request.
+Captured JWT claims are re-signed with a fresh secret used only by the local gateway, with a one-hour expiry. This changes authentication in a local test copy, not the original capture or its expected response. This is an isolated demonstration convenience, not a general authentication replay policy. Local telemetry export is disabled; the APM and log links show the original GKE request.
 
-Run the baseline test:
+Open `report.html` in the output directory for a compact result page with the original trace ID, Datadog links, and phase results. Select the dedicated partner organization in Datadog. The report labels its execution time and capture retrieval time; it is saved evidence rather than a live dashboard. `summary.json` is the machine-readable result. Logs and replay artifacts remain private in the ignored output directory; share only the reviewed report, which contains no request bodies or authentication headers.
 
-```bash
-"$PROXYMOCK" replay --in "$CAPTURE/tests" --test-against http://localhost:18080 \
-  --out "$CAPTURE/replay-baseline" --fail-if 'requests.result-match-pct != 100'
-echo $?
-```
-
-Expect exit 0 and a passing `replay-verdict.json`, including `bodyMatch: pass`. Stop the mock with Ctrl-C, restart the same mock command with `--chaos '*:status=503'` and `--out "$CAPTURE/mock-fault"`, then replay into `--out "$CAPTURE/replay-fault"`. Expect exit 1, recorded status 200, and observed status 503. Stop the faulted mock, restart without chaos using a new output directory, and replay into `--out "$CAPTURE/replay-recovery"`; expect exit 0 again. Check the verdict's status codes so an unrelated failure cannot masquerade as the intended fault.
-
-Stop the mock and remove only these demo resources afterward:
-
-```bash
-docker rm -f dd-replay-gateway dd-replay-redis
-docker network rm dd-replay-validation
-```
+The [presenter guide](DEMO.md) describes a proposed eight-minute walkthrough and the claims this example supports. Keep a rehearsed report available in case Datadog indexing, account access, or network availability interrupts the live segment. Identify it explicitly as the earlier run if used.
