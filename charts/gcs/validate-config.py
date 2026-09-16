@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Validate chart profiles and the reader contract with the pinned collector binary (requires PyYAML and Docker)."""
+"""Validate the GCS collector and reader contract."""
+
 import json
 import subprocess
 import tempfile
@@ -8,25 +9,23 @@ from pathlib import Path
 import yaml
 
 chart = Path(__file__).resolve().parent
-for profile, enabled in (("archive", False), ("trace-correlation", True), ("trace-correlation", False)):
-    rendered = subprocess.check_output(["helm", "template", "test", str(chart), "--set", f"datadog.enabled={str(enabled).lower()}", "--set", f"profile={profile}"], text=True)
-    objects = list(yaml.safe_load_all(rendered))
-    config = next(item for item in objects if item["kind"] == "ConfigMap")["data"]["otel.yaml"]
-    parsed = yaml.safe_load(config)
-    processors = parsed["service"]["pipelines"]["logs/gcs"]["processors"]
-    if profile == "archive":
-        assert "filter/traced" not in processors, "Generic archival must retain untraced traffic"
-        assert "logs/correlation" not in parsed["service"]["pipelines"]
-        assert "datadog" not in parsed["exporters"]
-    else:
-        assert "filter/traced" in processors
-    image = next(item for item in objects if item["kind"] == "Deployment")["spec"]["template"]["spec"]["containers"][0]["image"]
-    with tempfile.TemporaryDirectory() as folder:
-        Path(folder).chmod(0o755)
-        Path(folder, "otel.yaml").write_text(config)
-        Path(folder, "otel.yaml").chmod(0o644)
-        subprocess.run(["docker", "run", "--rm", "--network=none", "-e", "DD_API_KEY=" + "0" * 32, "-v", f"{folder}:/conf:ro", image, "validate", "--config=/conf/otel.yaml"], check=True)
-    print(json.dumps({"profile": profile, "datadog": enabled, "status": "valid"}))
+rendered = subprocess.check_output(["helm", "template", "test", str(chart)], text=True)
+objects = list(yaml.safe_load_all(rendered))
+config = next(item for item in objects if item["kind"] == "ConfigMap")["data"]["otel.yaml"]
+parsed = yaml.safe_load(config)
+assert set(parsed["exporters"]) == {"google_cloud_storage"}
+assert set(parsed["service"]["pipelines"]) == {"logs"}
+assert parsed["service"]["pipelines"]["logs"]["exporters"] == ["google_cloud_storage"]
+image = next(item for item in objects if item["kind"] == "Deployment")["spec"]["template"]["spec"]["containers"][0]["image"]
+with tempfile.TemporaryDirectory() as folder:
+    Path(folder).chmod(0o755)
+    Path(folder, "otel.yaml").write_text(config)
+    Path(folder, "otel.yaml").chmod(0o644)
+    subprocess.run(
+        ["docker", "run", "--rm", "--network=none", "-v", f"{folder}:/conf:ro", image, "validate", "--config=/conf/otel.yaml"],
+        check=True,
+    )
+print(json.dumps({"channel": "gcs", "exporters": ["google_cloud_storage"], "status": "valid"}))
 
 reader_args = ["helm", "template", "test", str(chart), "--set", "reader.enabled=true", "--set", "reader.image=example/reader:validation", "--set", "reader.rbac.create=true", "--set", "reader.rbac.subjects[0].kind=Group", "--set", "reader.rbac.subjects[0].name=traffic-readers"]
 objects = list(yaml.safe_load_all(subprocess.check_output(reader_args, text=True)))
@@ -52,4 +51,4 @@ for overrides in (["reader.image="], ["reader.serviceAccount.name=same", "servic
         command += ["--set", override]
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode != 0, f"Invalid reader settings were accepted: {overrides}"
-print(json.dumps({"reader": "configuration-and-rbac", "status": "valid"}))
+print(json.dumps({"channel": "gcs-reader", "status": "valid"}))

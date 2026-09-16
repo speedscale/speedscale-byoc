@@ -4,6 +4,8 @@ Small, single-file Python tools for gathering RRPair traffic from each BYOC back
 
 > **Object storage is built into proxymock.** For S3, GCS, and other S3-compatible buckets, use `proxymock import s3` instead of a script. It reads the current OTel `awss3` layout and the legacy Fluent Bit layout, prunes by key prefix so it downloads only matching objects, and filters on service, namespace, status, endpoint, direction, trace ID, or a full Speedscale traffic filter. See the [S3](../charts/fluentbit-s3/README.md) and [GCS](../charts/fluentbit-gcs/README.md) chart READMEs. `gcs-gather.py` below is kept for existing workflows.
 
+`datadog-gather.py` queries complete RRPair logs from one Datadog organization. Its API key, application key, and site must belong to the same organization. For the partner demonstration use [`recipes/datadog-to-replay/gather.py`](../recipes/datadog-to-replay/README.md), which requires the explicit `DATADOG_PARTNER_*` variables and cannot fall back to production credentials.
+
 ## `loki-gather.py`
 
 Pull a subset of RRPair traffic from Loki (grafana scenario) and write a `proxymock`-replayable directory.

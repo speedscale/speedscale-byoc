@@ -29,6 +29,8 @@ Usage:
 
     proxymock mock --in /tmp/dd-snapshot
 
+This is a generic customer utility, not the partner demonstration tool.
+
 Auth: reads DATADOG_API_KEY / DATADOG_APP_KEY from the environment (a same-org
 key + application key pair). `source` your byoc-datadog.env first, or pass
 --api-key / --app-key. The Datadog site (and thus API host) defaults to the

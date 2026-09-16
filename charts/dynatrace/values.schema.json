@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["image", "dynatrace", "resources"],
+  "properties": {
+    "image": {"type": "string", "minLength": 1},
+    "dynatrace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endpoint", "credentialsSecret", "tokenField"],
+      "properties": {
+        "endpoint": {"type": "string", "format": "uri", "minLength": 1},
+        "credentialsSecret": {"type": "string", "minLength": 1},
+        "tokenField": {"type": "string", "minLength": 1}
+      }
+    },
+    "resources": {"type": "object"}
+  }
+}
