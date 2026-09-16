@@ -1,185 +1,103 @@
 # Speedscale BYOC
 
-Reference architecture Helm charts for Speedscale BYOC (Bring Your Own Cloud) — capture real traffic with the Speedscale Operator and route it to your own storage backend instead of (or in addition to) Speedscale Cloud.
+Reference Helm charts for sending captured Speedscale traffic to storage and observability systems controlled by the customer.
 
-## Scenarios
+## Destination channels
 
-| Chart | Stack | Best for |
+Every destination has one Forwarder exporter, one collector, one credential boundary, and one backend. The four primary channels are independent:
+
+| Channel | Chart | Collector destination |
 |---|---|---|
-| [`charts/grafana/`](charts/grafana/) | OTel Collector → Loki + Prometheus → Grafana | Live dashboard + PromQL aggregates + LogQL drill-down |
-| [`charts/elasticsearch/`](charts/elasticsearch/) | OTel Collector → Elasticsearch → Kibana | Full-text search + Kibana Discover |
-| [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | OTel Collector → Fluent Bit → GCS | Durable GCS archive + BigQuery |
-| [`charts/fluentbit-s3/`](charts/fluentbit-s3/) | OTel Collector → Fluent Bit → S3 | Durable S3 archive + Athena |
-| [`charts/azureblob/`](charts/azureblob/) | OTel Collector → Azure Blob (native `azureblob` exporter) | Durable Azure Blob archive + lifecycle tiering |
-| [`charts/gcs-datadog/`](charts/gcs-datadog/) | OTel Collector → native GCS + Datadog trace links | Full traffic in GCS with lightweight APM correlation logs |
-| [`charts/otlp/`](charts/otlp/) | OTel Collector → OTLP/HTTP (`otlphttp`) | Any OTLP-native vendor — Dynatrace, Datadog, Honeycomb, New Relic, … |
+| S3 | [`charts/fluentbit-s3/`](charts/fluentbit-s3/) | Native OTel `awss3` exporter to one S3 bucket |
+| GCS | [`charts/gcs/`](charts/gcs/) | Native OTel `google_cloud_storage` exporter to one GCS bucket |
+| Datadog | [`charts/datadog/`](charts/datadog/) | Datadog exporter for logs, traces, and metrics |
+| Dynatrace | [`charts/dynatrace/`](charts/dynatrace/) | OTLP/HTTP exporter for logs, traces, and metrics |
 
-All scenarios coexist in separate namespaces on the same cluster. Point the Forwarder's `byoc_<backend>` exporter at the backend's collector to choose where traffic goes.
+Additional charts remain independent destinations:
 
-## Quick start
+| Chart | Destination |
+|---|---|
+| [`charts/grafana/`](charts/grafana/) | Loki and Prometheus in the same Grafana stack |
+| [`charts/elasticsearch/`](charts/elasticsearch/) | Elasticsearch and Kibana |
+| [`charts/azureblob/`](charts/azureblob/) | Azure Blob Storage |
+| [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | Legacy GCS path using the S3-compatible API and HMAC |
+| [`charts/otlp/`](charts/otlp/) | One generic OTLP logs backend without a dedicated chart |
 
-```bash
-helm repo add speedscale https://speedscale.github.io/operator-helm/
+## Wiring
+
+Install the Speedscale Operator separately. Add one named Forwarder exporter for every enabled destination:
+
+```yaml
+forwarder:
+  exporters:
+    byoc_s3:
+      otel_endpoint: http://otel-collector.byoc-s3.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+    byoc_gcs:
+      otel_endpoint: http://byoc-gcs-gcs.byoc-gcs.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+    byoc_datadog:
+      otel_endpoint: http://byoc-datadog-datadog.byoc-datadog.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+    byoc_dynatrace:
+      otel_endpoint: http://byoc-dynatrace-dynatrace.byoc-dynatrace.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+```
+
+Do not fan out from one destination collector to another backend. Splitting at the Forwarder keeps DLP rules, traffic filters, credentials, retry queues, failures, and enablement independent. A Datadog API key never belongs in GCS values, and a GCS identity never belongs in the Datadog chart.
+
+## Install a channel
+
+Each chart README contains its prerequisites and install command. For example:
+
+```sh
 helm repo add speedscale-byoc https://speedscale.github.io/speedscale-byoc/
 helm repo update
 
-# Install the Speedscale Operator + Forwarder
-helm upgrade --install speedscale-operator speedscale/speedscale-operator \
-  -n speedscale --create-namespace \
-  --set apiKeySecret=speedscale-apikey \
-  --set clusterName=my-cluster \
-  --set 'forwarder.exporters.byoc_grafana.otel_endpoint=http://otel-collector.byoc-grafana.svc.cluster.local:4317'
-
-# Pick a backend — e.g. Grafana + Loki
-helm upgrade --install byoc-grafana speedscale-byoc/grafana \
-  -n byoc-grafana --create-namespace
+helm upgrade --install byoc-datadog speedscale-byoc/datadog \
+  --namespace byoc-datadog --create-namespace \
+  --set datadog.credentialsSecret=datadog-partner-api-key
 ```
 
-See each chart's `README.md` for the full install + configure + replay walkthrough.
+Create backend credentials outside Helm values and source control. Partner demos must use the dedicated partner-account credential Secret; production monitoring credentials must not be reused.
 
-## Architecture: one backend, one collector, one exporter
+## Replay captured traffic
 
-Every chart here follows the same rule, and so should any backend you add:
+Object-store channels are imported from their own backend:
 
-> **One backend = one self-contained chart = one OTel Collector = one Forwarder exporter.**
+```sh
+# S3
+proxymock import s3 --bucket my-s3-archive --prefix byoc/ \
+  --service api-gateway --from now-1h --out /tmp/s3-snapshot
 
-The Forwarder captures RRPairs and ships them over OTLP to a backend's OTel
-Collector. Each chart bundles its **own** Collector (Service on `:4317`) that
-exports to **only that backend**. You wire it by pointing one entry in the
-Forwarder's `forwarder.exporters` map at that Collector:
-
-```yaml
-forwarder:
-  exporters:
-    byoc_grafana:                    # one named exporter per backend
-      otel_endpoint: http://otel-collector.byoc-grafana.svc.cluster.local:4317
-      dlp_config_id: standard        # DLP + filtering are PER EXPORTER
-      filter_rule: standard
+# Native GCS
+proxymock import gcs --bucket my-gcs-archive --prefix byoc/ \
+  --service api-gateway --from now-1h --out /tmp/gcs-snapshot
 ```
 
-Internal Collector fan-out (`exporters: [a, b]`) is reserved for multiple
-signals of the **same** backend — e.g. the `grafana` chart's Collector emits
-both Loki logs and derived Prometheus metrics. A **different** backend always
-gets its own Collector; never add it as a branch on another backend's pipeline.
+Datadog retrieval queries full RRPair logs directly from Datadog:
 
-The `gcs-datadog` reference is a paired archive and correlation workflow: full records go to GCS, while Datadog receives only a URL log pointing to the archive. It has its own collector and forwarder exporter.
-
-### Running multiple backends
-
-To send the same traffic to several backends at once, install each chart and
-add **one exporter per backend** — each pointed at its own Collector, each with
-its own DLP/filter policy:
-
-```yaml
-forwarder:
-  exporters:
-    byoc_grafana:                    # → byoc-grafana       (Loki + Grafana)
-      otel_endpoint: http://otel-collector.byoc-grafana.svc.cluster.local:4317
-      dlp_config_id: standard
-      filter_rule: standard
-    byoc_es:                         # → byoc-elasticsearch (Elasticsearch + Kibana)
-      otel_endpoint: http://otel-collector.byoc-elasticsearch.svc.cluster.local:4317
-      dlp_config_id: standard
-      filter_rule: standard
-    byoc_s3:                         # → byoc-fluentbit-s3   (S3 archive)
-      otel_endpoint: http://otel-collector.byoc-fluentbit-s3.svc.cluster.local:4317
-      dlp_config_id: pii-strict      # e.g. archive only heavily-redacted traffic
-      filter_rule: http-only
+```sh
+python3 recipes/datadog-to-replay/gather.py \
+  --trace-id <trace-id> --service api-gateway --out /tmp/datadog-capture
 ```
 
-Splitting at the Forwarder (rather than fanning out inside one shared Collector)
-is deliberate: it gives **per-destination DLP/filtering**, isolates one backend's
-failures from another's, and lets you add or remove a backend without touching
-the others.
+Companion scripts for legacy GCS, S3, Loki, Elasticsearch, Azure Blob, and generic Datadog log searches live in [`scripts/`](scripts/).
 
-### Adding a new backend
+## Development checks
 
-How you add a backend depends on whether it speaks OTLP natively:
-
-**OTLP-native vendor** (Dynatrace, Datadog, Honeycomb, New Relic, …) — do
-**not** add a chart. They all share the identical Collector + `otlphttp`
-exporter; only the logs endpoint URL and the auth header differ.
-
-1. `helm install byoc-<vendor> speedscale-byoc/otlp` with a values preset
-   (endpoint + auth header + token Secret) — see
-   [`charts/otlp/examples/`](charts/otlp/examples/).
-2. Add one `forwarder.exporters.byoc_<vendor>` entry pointed at that
-   Collector's Service, with its own `dlp_config_id` / `filter_rule`.
-3. If the vendor isn't already covered, add one `examples/<vendor>.yaml`
-   preset to `charts/otlp/` — no template change needed.
-
-**Non-OTLP backend** (object storage, classic Loki/Elasticsearch) — add a
-dedicated chart with the appropriate exporter (`awss3` / `azureblob` / `loki` /
-`elasticsearch`):
-
-1. Add `charts/<backend>/` with an OTel Collector whose pipeline exports
-   **only** to that backend (copy the closest existing chart as a template).
-2. Add one `forwarder.exporters.byoc_<backend>` entry pointed at the new
-   Collector's Service, with its own `dlp_config_id` / `filter_rule`.
-3. Do **not** add the backend to an existing Collector's `exporters` list.
-
-Either way the Forwarder wiring is one entry per backend, and backends stay
-independent.
-
-## Replay captured traffic with proxymock
-
-For the object-store scenarios, [`proxymock`](https://docs.speedscale.com/proxymock/) reads the archive directly with `proxymock import s3`. It understands both the current OTel `awss3` hive-style layout under `byoc/` and the legacy Fluent Bit layout, and filters server-side on the key prefixes so only matching objects are downloaded:
-
-```bash
-# S3 scenario
-proxymock import s3 --bucket my-rrpair-archive --prefix byoc/ \
-  --service my-service --from now-1h --out /tmp/snapshot
-
-# GCS scenario, over the S3-compatible XML API
-proxymock import s3 --bucket my-rrpair-archive --prefix byoc/ \
-  --s3-endpoint-url https://storage.googleapis.com --s3-force-path-style \
-  --service my-service --from now-1h --out /tmp/snapshot
-
-proxymock mock --in /tmp/snapshot
+```sh
+for chart in charts/*/; do helm lint --strict "$chart"; done
+python3 tests/test_channel_boundaries.py
+python3 -m unittest discover -s recipes/datadog-to-replay -p 'test_*.py' -v
 ```
 
-Filters beyond `--service` include `--namespace`, `--status`, `--endpoint`, `--direction`, `--trace-id`, and `--filter` for the full Speedscale traffic filter language. Add `--follow` to keep importing as new objects arrive, and `--dlp-config` to redact on the way in. `--local-dir` reads a directory tree with the same layout, which is useful for testing without bucket credentials.
-
-The query backends still use their companion scripts, since the traffic lives in Loki or Elasticsearch rather than object storage:
-
-```bash
-# Grafana scenario
-python3 scripts/loki-gather.py \
-  --loki-url http://<node-ip>:30031 --service my-service --start -1h \
-  --out-dir /tmp/snapshot
-
-# Elasticsearch scenario
-python3 scripts/es-gather.py \
-  --es-url http://<node-ip>:30032 --service my-service --start -1h \
-  --out-dir /tmp/snapshot
-
-# Azure Blob scenario
-python3 scripts/azure-gather.py \
-  --connection-string "$AZURE_STORAGE_CONNECTION_STRING" --container byoc \
-  --service my-service --start -1h \
-  --out-dir /tmp/snapshot
-```
-
-See [`scripts/README.md`](scripts/README.md) for their filter flags.
-
-## Bring your own AI
-
-Once traffic is captured, your data and your model can both stay on your
-infrastructure. The [`recipes/`](recipes/) pair proxymock with a **local LLM**
-(any OpenAI-compatible server — oMLX, Ollama, vLLM, KServe) for **$0,
-zero-egress** workflows. Each is one self-contained script: a deterministic
-proxymock spine does the work, and the model is consulted **once**, for the
-judgment a script is bad at.
-
-- [`recipes/qa-tester.sh`](recipes/qa-tester.sh) — **regression gate.** Replay
-  recorded traffic against a build; proxymock owns pass/fail (exit 0/1); on
-  failure the model triages the field-level drift into REGRESSION vs NOISE.
-- [`recipes/sre-debug.sh`](recipes/sre-debug.sh) — **incident triage.** Replay
-  the failing traffic against a build to reproduce, then the model diagnoses the
-  culprit endpoint/dependency, blast radius, and likely root cause.
-
-See [`recipes/README.md`](recipes/README.md).
+The boundary test renders the four primary charts and verifies each collector contains only its declared destination exporter.
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Apache 2.0. See [LICENSE](LICENSE).

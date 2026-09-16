@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "charts/**"
+      - "recipes/datadog-to-replay/**"
+      - "tests/**"
       - ".github/workflows/lint.yml"
   workflow_dispatch:
 
@@ -39,7 +41,22 @@ jobs:
             helm lint --strict "$chart"
           done
 
-      - name: Validate native GCS and Datadog collector configurations
+      - name: Install validation dependencies
         run: |
           python3 -m pip install PyYAML==6.0.3
-          python3 charts/gcs-datadog/validate-config.py
+
+      - name: Validate destination boundaries
+        run: |
+          python3 tests/test_channel_boundaries.py
+
+      - name: Validate collector configurations
+        run: |
+          python3 tests/validate_collectors.py
+
+      - name: Validate native GCS collector and reader
+        run: |
+          python3 charts/gcs/validate-config.py
+
+      - name: Test Datadog replay recipe
+        run: |
+          python3 -m unittest discover -s recipes/datadog-to-replay -p 'test_*.py' -v

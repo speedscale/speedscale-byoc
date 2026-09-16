@@ -1,0 +1,11 @@
+image: otel/opentelemetry-collector-contrib:0.160.0@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6
+dynatrace:
+  endpoint: https://CHANGEME.live.dynatrace.com/api/v2/otlp
+  credentialsSecret: dynatrace-api-token
+  tokenField: api-token
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi

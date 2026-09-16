@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gcs", "serviceAccount", "resources", "reader", "image"],
+  "properties": {
+    "image": {"type": "string", "minLength": 1},
+    "gcs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project", "bucket", "region", "prefix"],
+      "properties": {
+        "project": {"type": "string", "minLength": 1},
+        "bucket": {
+          "type": "string",
+          "minLength": 3,
+          "pattern": "^[a-z0-9][a-z0-9._-]+[a-z0-9]$"
+        },
+        "region": {"type": "string", "minLength": 1},
+        "prefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$"
+        }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["create", "name", "annotations"],
+      "properties": {
+        "create": {"type": "boolean"},
+        "name": {"type": "string"},
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        }
+      }
+    },
+    "resources": {"type": "object"},
+    "reader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "image", "serviceAccount", "resources", "rbac"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "image": {"type": "string"},
+        "resources": {"type": "object"},
+        "serviceAccount": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["create", "name", "annotations"],
+          "properties": {
+            "create": {"type": "boolean"},
+            "name": {"type": "string"},
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {"type": "string"}
+            }
+          }
+        },
+        "rbac": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["create", "subjects"],
+          "properties": {
+            "create": {"type": "boolean"},
+            "subjects": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "name"],
+                "properties": {
+                  "kind": {"enum": ["User", "Group", "ServiceAccount"]},
+                  "name": {"type": "string", "minLength": 1},
+                  "namespace": {"type": "string"},
+                  "apiGroup": {"type": "string"}
+                }
+              }
+            }
+          }
+        }
+      },
+      "allOf": [{
+        "if": {"properties": {"enabled": {"const": true}}},
+        "then": {"properties": {"image": {"minLength": 1}}}
+      }]
+    }
+  }
+}

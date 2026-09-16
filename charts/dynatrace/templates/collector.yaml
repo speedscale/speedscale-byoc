@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-dynatrace
+  labels:
+    byoc.speedscale.com/provider: dynatrace
+data:
+  otel.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 400
+        spike_limit_mib: 80
+      batch: {}
+    exporters:
+      otlphttp/dynatrace:
+        endpoint: {{ .Values.dynatrace.endpoint | quote }}
+        headers:
+          Authorization: "Api-Token ${env:DT_API_TOKEN}"
+        compression: gzip
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+    service:
+      extensions: [health_check]
+      pipelines:
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlphttp/dynatrace]
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlphttp/dynatrace]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlphttp/dynatrace]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-dynatrace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-dynatrace
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-dynatrace
+        app.kubernetes.io/version: {{ .Chart.Version | quote }}
+    spec:
+      containers:
+        - name: collector
+          image: {{ .Values.image }}
+          args: ["--config=/conf/otel.yaml"]
+          env:
+            - name: DT_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.dynatrace.credentialsSecret }}
+                  key: {{ .Values.dynatrace.tokenField }}
+          resources: {{ toYaml .Values.resources | nindent 12 }}
+          ports:
+            - {name: grpc, containerPort: 4317}
+            - {name: http, containerPort: 4318}
+            - {name: health, containerPort: 13133}
+          readinessProbe:
+            httpGet: {path: /, port: health}
+          livenessProbe:
+            httpGet: {path: /, port: health}
+          volumeMounts:
+            - {name: config, mountPath: /conf, readOnly: true}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-dynatrace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-dynatrace
+spec:
+  selector:
+    app: {{ .Release.Name }}-dynatrace
+  ports:
+    - {name: grpc, port: 4317, targetPort: grpc}
+    - {name: http, port: 4318, targetPort: http}

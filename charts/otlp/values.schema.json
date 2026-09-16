@@ -14,7 +14,7 @@
           "type": "string",
           "format": "uri",
           "minLength": 1,
-          "description": "EXACT OTLP logs endpoint URL (full path), e.g. https://<env-id>.live.dynatrace.com/api/v2/otlp/v1/logs"
+          "description": "Exact OTLP logs endpoint URL, including /v1/logs"
         },
         "headerName": {
           "type": "string",
@@ -23,7 +23,7 @@
         },
         "headerPrefix": {
           "type": "string",
-          "description": "Value prefix prepended to the token (e.g. 'Api-Token ' for Dynatrace; empty for most)"
+          "description": "Value prefix prepended to the token"
         },
         "tokenSecret": {
           "type": "string",

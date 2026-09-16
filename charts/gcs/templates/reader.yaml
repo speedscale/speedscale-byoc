@@ -1,11 +1,11 @@
 {{- if .Values.reader.enabled }}
-{{- if eq (include "gcs-datadog.readerServiceAccount" .) (include "gcs-datadog.serviceAccount" .) }}
+{{- if eq (include "gcs.readerServiceAccount" .) (include "gcs.serviceAccount" .) }}
 {{- fail "reader and collector must use separate service accounts" }}
 {{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "gcs-datadog.readerName" . }}
+  name: {{ include "gcs.readerName" . }}
 data:
   reader.json: |
     {"version":1,"destinations":[{"id":"google_cloud_storage","bucket":{{ .Values.gcs.bucket | toJson }},"prefix":{{ printf "%s/" .Values.gcs.prefix | toJson }}}]}
@@ -14,16 +14,16 @@ data:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "gcs-datadog.readerServiceAccount" . }}
+  name: {{ include "gcs.readerServiceAccount" . }}
   annotations: {{ toYaml .Values.reader.serviceAccount.annotations | nindent 4 }}
 ---
 {{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "gcs-datadog.readerName" . }}
+  name: {{ include "gcs.readerName" . }}
 spec:
-  serviceName: {{ include "gcs-datadog.readerName" . }}
+  serviceName: {{ include "gcs.readerName" . }}
   replicas: 1
   selector:
     matchLabels:
@@ -37,7 +37,7 @@ spec:
       annotations:
         checksum/reader: {{ toJson (dict "bucket" .Values.gcs.bucket "prefix" .Values.gcs.prefix) | sha256sum }}
     spec:
-      serviceAccountName: {{ include "gcs-datadog.readerServiceAccount" . }}
+      serviceAccountName: {{ include "gcs.readerServiceAccount" . }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -63,7 +63,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "gcs-datadog.readerName" . }}
+            name: {{ include "gcs.readerName" . }}
         - name: tmp
           emptyDir: {}
 {{- if .Values.reader.rbac.create }}
@@ -74,28 +74,28 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "gcs-datadog.readerName" . }}
+  name: {{ include "gcs.readerName" . }}
 rules:
   - apiGroups: [""]
     resources: [configmaps]
     verbs: [get, list]
   - apiGroups: [""]
     resources: [pods]
-    resourceNames: [{{ printf "%s-0" (include "gcs-datadog.readerName" .) | quote }}]
+    resourceNames: [{{ printf "%s-0" (include "gcs.readerName" .) | quote }}]
     verbs: [get]
   - apiGroups: [""]
     resources: [pods/portforward]
-    resourceNames: [{{ printf "%s-0" (include "gcs-datadog.readerName" .) | quote }}]
+    resourceNames: [{{ printf "%s-0" (include "gcs.readerName" .) | quote }}]
     verbs: [create]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "gcs-datadog.readerName" . }}
+  name: {{ include "gcs.readerName" . }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "gcs-datadog.readerName" . }}
+  name: {{ include "gcs.readerName" . }}
 subjects: {{ toYaml .Values.reader.rbac.subjects | nindent 2 }}
 {{- end }}
 {{- end }}

@@ -75,6 +75,6 @@ do a fresh login first and substitute the token into the `Authorization` header
 before replay — otherwise auth'd endpoints will fail on a stale credential, not a
 real regression.
 
-## Datadog capture links to tests and mocks
+## Datadog RRPairs to tests and mocks
 
-The [Datadog-to-replay recipe](datadog-to-replay/README.md) queries partner-account APM spans and capture logs, retrieves the linked RRPairs from GCS, and separates incoming test traffic from outgoing dependency mocks. It includes conversion regression tests and a microsvc gateway demonstration verified with baseline pass, injected dependency failure, and recovery pass.
+The [Datadog-to-replay recipe](datadog-to-replay/README.md) queries partner-account APM spans and full RRPair logs directly from Datadog, then separates incoming test traffic from outgoing dependency mocks. It includes conversion regression tests and a microsvc gateway demonstration verified with baseline pass, injected dependency failure, and recovery pass.
