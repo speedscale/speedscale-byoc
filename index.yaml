@@ -38,6 +38,25 @@ entries:
   datadog:
   - apiVersion: v2
     appVersion: 0.160.0
+    created: "2026-09-17T15:03:22.672907015Z"
+    description: Dedicated Speedscale BYOC channel for Datadog logs, traces, and metrics.
+    digest: ff6b660880c04aac25891a1a38861e67283eeda178cdffa4e875196b19849c75
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - datadog
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: datadog
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/datadog-1.1.0/datadog-1.1.0.tgz
+    version: 1.1.0
+  - apiVersion: v2
+    appVersion: 0.160.0
     created: "2026-09-16T13:30:20.605308958Z"
     description: Dedicated Speedscale BYOC channel for Datadog logs, traces, and metrics.
     digest: 23bd6a3b1691f30e119252c3f069d596ce3046b56ad59ac4a6619c7ee1e84ce3
@@ -56,6 +75,26 @@ entries:
     - https://github.com/speedscale/speedscale-byoc/releases/download/datadog-1.0.0/datadog-1.0.0.tgz
     version: 1.0.0
   dynatrace:
+  - apiVersion: v2
+    appVersion: 0.160.0
+    created: "2026-09-17T15:03:22.933134057Z"
+    description: Dedicated Speedscale BYOC channel for Dynatrace logs, traces, and
+      metrics.
+    digest: 0ae51e56486eaac1cfb57f6bac82906420315be8ebb1565e0595beab32326eca
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - dynatrace
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: dynatrace
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/dynatrace-1.1.0/dynatrace-1.1.0.tgz
+    version: 1.1.0
   - apiVersion: v2
     appVersion: 0.160.0
     created: "2026-09-16T13:30:20.905894618Z"
@@ -312,7 +351,56 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/grafana-1.0.0/grafana-1.0.0.tgz
     version: 1.0.0
+  newrelic:
+  - apiVersion: v2
+    appVersion: 0.160.0
+    created: "2026-09-17T15:03:23.275286972Z"
+    description: Dedicated Speedscale BYOC channel for New Relic logs, traces, and
+      metrics.
+    digest: f7a1cd517e2ff597fbdfad943934f5c70a04254504b4bef90c900fc7e381dd1f
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - newrelic
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: newrelic
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/newrelic-1.0.0/newrelic-1.0.0.tgz
+    version: 1.0.0
   otlp:
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.2.0
+    created: "2026-09-17T15:03:23.494087776Z"
+    description: Generic Speedscale BYOC OTLP logs channel for backends without a
+      dedicated chart.
+    digest: 5eaf52753e9cea38c3a2235b75146303faded579b2363c30d9452469e3d41862
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - otlp
+    - opentelemetry
+    - honeycomb
+    - logs
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: otlp
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/otlp
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/otlp-1.2.0/otlp-1.2.0.tgz
+    version: 1.2.0
   - annotations:
       artifacthub.io/category: monitoring-logging
       artifacthub.io/license: Apache-2.0
@@ -380,4 +468,4 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/otlp-1.0.0/otlp-1.0.0.tgz
     version: 1.0.0
-generated: "2026-09-16T13:30:21.442906964Z"
+generated: "2026-09-17T15:03:23.494115787Z"
