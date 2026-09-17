@@ -43,6 +43,31 @@ def main():
     full = render("otlp", "--set", "securityProfile.enabled=true", "--set", "securityProfile.includeFullPayload=true")
     config = "\n".join(next(item for item in full if item.get("kind") == "ConfigMap").get("data", {}).values())
     assert 'set(log.body, log.attributes)' not in config
+
+    newrelic = render("newrelic")
+    config = "\n".join(next(item for item in newrelic if item.get("kind") == "ConfigMap").get("data", {}).values())
+    for required in (
+        'set(log.body, Concat(',
+        "groupbyattrs/service:",
+        "span_metrics/newrelic:",
+        "new_name: http.server.duration",
+        "metrics/newrelic_apm:",
+    ):
+        assert required in config
+    assert "processors: [memory_limiter, transform/captures, groupbyattrs/service, batch]" in config
+    assert "exporters: [otlphttp/newrelic, span_metrics/newrelic]" in config
+
+    disabled = subprocess.run(
+        [
+            "helm", "template", "contract", str(ROOT / "charts" / "otlp"),
+            "--set", "otlp.signals.logs=false",
+            "--set", "otlp.signals.traces=false",
+            "--set", "otlp.signals.metrics=false",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert disabled.returncode != 0, "OTLP chart rendered with all signals disabled"
     print("validated rollout, pod hardening, network policy, and security profiles")
 
 

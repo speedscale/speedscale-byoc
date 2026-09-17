@@ -20,6 +20,9 @@ CASES = {
     "kafka": {},
     "newrelic": {"env": ["NEW_RELIC_LICENSE_KEY=validation"]},
     "otlp": {"env": ["OTLP_TOKEN=validation", "OTLP_LOGS_ENDPOINT=https://example.com/v1/logs", "OTLP_BASE_ENDPOINT=https://example.com"]},
+    "otlp-traces": {"chart": "otlp", "helm": ["--set", "otlp.signals.logs=false", "--set", "otlp.signals.traces=true", "--set", "otlp.baseEndpoint=https://example.com"], "env": ["OTLP_TOKEN=validation", "OTLP_LOGS_ENDPOINT=https://example.com/v1/logs", "OTLP_BASE_ENDPOINT=https://example.com"]},
+    "otlp-metrics": {"chart": "otlp", "helm": ["--set", "otlp.signals.logs=false", "--set", "otlp.signals.metrics=true", "--set", "otlp.baseEndpoint=https://example.com"], "env": ["OTLP_TOKEN=validation", "OTLP_LOGS_ENDPOINT=https://example.com/v1/logs", "OTLP_BASE_ENDPOINT=https://example.com"]},
+    "otlp-all-signals": {"chart": "otlp", "helm": ["--set", "otlp.signals.traces=true", "--set", "otlp.signals.metrics=true", "--set", "otlp.baseEndpoint=https://example.com"], "env": ["OTLP_TOKEN=validation", "OTLP_LOGS_ENDPOINT=https://example.com/v1/logs", "OTLP_BASE_ENDPOINT=https://example.com"]},
     "otlp-security": {"chart": "otlp", "helm": ["--set", "securityProfile.enabled=true"], "env": ["OTLP_TOKEN=validation", "OTLP_LOGS_ENDPOINT=https://example.com/v1/logs", "OTLP_BASE_ENDPOINT=https://example.com"]},
     "splunk": {"env": ["SPLUNK_HEC_TOKEN=validation"]},
 }

@@ -21,6 +21,11 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["logs", "traces", "metrics"],
+          "anyOf": [
+            {"properties": {"logs": {"const": true}}},
+            {"properties": {"traces": {"const": true}}},
+            {"properties": {"metrics": {"const": true}}}
+          ],
           "properties": {
             "logs": {"type": "boolean"},
             "traces": {"type": "boolean"},

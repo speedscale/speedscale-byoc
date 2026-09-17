@@ -3,6 +3,7 @@
 ## [2.0.0] - 2026-09-17
 
 - Add logs, traces, and metrics signal selection, custom headers, TLS and mTLS, persistent queues, resource controls, pod hardening, and restricted OTLP ingress.
+- Reject configurations that disable all three telemetry signals.
 - Add a metadata-only security profile with normalized network, HTTP, workload, DLP, and trace-correlation fields.
 - Add Elastic Security, Falcon LogScale, and OpenSearch Security Analytics presets.
 - Qualify Kubernetes resource names with the Helm release name.

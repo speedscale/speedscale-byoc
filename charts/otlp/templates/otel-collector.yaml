@@ -1,3 +1,6 @@
+{{- if not (or .Values.otlp.signals.logs .Values.otlp.signals.traces .Values.otlp.signals.metrics) }}
+{{- fail "at least one otlp.signals entry must be enabled" }}
+{{- end }}
 {{- if and (or .Values.otlp.signals.traces .Values.otlp.signals.metrics) (not .Values.otlp.baseEndpoint) }}
 {{- fail "otlp.baseEndpoint is required when traces or metrics are enabled" }}
 {{- end }}
