@@ -1,6 +1,6 @@
 # Generic OTLP logs channel
 
-This chart forwards Speedscale RRPair logs to an OTLP/HTTP backend that does not have a dedicated chart. Use `charts/datadog`, `charts/dynatrace`, `charts/gcs`, or `charts/fluentbit-s3` for those four destinations. Do not use this chart to combine them.
+This chart forwards Speedscale RRPair logs to an OTLP/HTTP backend that does not have a dedicated chart. Use `charts/datadog`, `charts/dynatrace`, `charts/newrelic`, `charts/gcs`, or `charts/fluentbit-s3` for those destinations. Do not use this chart to combine them.
 
 Configure the exact logs endpoint, auth header, and a Secret containing the token under key `token`:
 

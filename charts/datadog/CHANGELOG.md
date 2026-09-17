@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.0] - 2026-09-17
+
+- Correlate RRPair logs with W3C trace context and workload service names.
+- Mark HTTP 5xx spans and exception events as errors.
+- Generate Datadog APM trace metrics through the Datadog connector.
+
 ## [1.0.0] - 2026-09-16
 
 - Add a dedicated Datadog collector for OTLP logs, traces, and metrics.

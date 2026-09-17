@@ -2,7 +2,7 @@ apiVersion: v2
 name: dynatrace
 description: Dedicated Speedscale BYOC channel for Dynatrace logs, traces, and metrics.
 type: application
-version: 1.0.0
+version: 1.1.0
 appVersion: "0.160.0"
 keywords: [speedscale, byoc, dynatrace, opentelemetry]
 home: https://github.com/speedscale/speedscale-byoc

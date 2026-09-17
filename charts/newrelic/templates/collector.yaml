@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-dynatrace
+  name: {{ .Release.Name }}-newrelic
   labels:
-    byoc.speedscale.com/provider: dynatrace
+    byoc.speedscale.com/provider: newrelic
 data:
   otel.yaml: |
     receivers:
@@ -43,16 +43,14 @@ data:
               - set(log.cache["context"], ExtractPatterns(log.cache["traceparent"], "^00-(?P<trace>[0-9a-f]{32})-(?P<span>[0-9a-f]{16})-[0-9a-f]{2}$")) where log.cache["traceparent"] != nil
               - set(log.trace_id, TraceID(log.cache["context"]["trace"])) where log.cache["context"]["trace"] != nil
               - set(log.span_id, SpanID(log.cache["context"]["span"])) where log.cache["context"]["span"] != nil
-      cumulativetodelta: {}
       batch:
         timeout: 1s
         send_batch_size: 100
     exporters:
-      otlphttp/dynatrace:
-        endpoint: {{ .Values.dynatrace.endpoint | quote }}
+      otlphttp/newrelic:
+        endpoint: {{ .Values.newrelic.endpoint | quote }}
         headers:
-          Authorization: "Api-Token ${env:DT_API_TOKEN}"
-        compression: gzip
+          api-key: ${env:NEW_RELIC_LICENSE_KEY}
         sending_queue:
           enabled: true
           queue_size: 1000
@@ -68,29 +66,29 @@ data:
         logs:
           receivers: [otlp]
           processors: [memory_limiter, transform/captures, batch]
-          exporters: [otlphttp/dynatrace]
+          exporters: [otlphttp/newrelic]
         traces:
           receivers: [otlp]
           processors: [memory_limiter, transform/errors, batch]
-          exporters: [otlphttp/dynatrace]
+          exporters: [otlphttp/newrelic]
         metrics:
           receivers: [otlp]
-          processors: [memory_limiter, cumulativetodelta, batch]
-          exporters: [otlphttp/dynatrace]
+          processors: [memory_limiter, batch]
+          exporters: [otlphttp/newrelic]
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-dynatrace
+  name: {{ .Release.Name }}-newrelic
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-dynatrace
+      app: {{ .Release.Name }}-newrelic
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-dynatrace
+        app: {{ .Release.Name }}-newrelic
         app.kubernetes.io/version: {{ .Chart.Version | quote }}
     spec:
       containers:
@@ -98,11 +96,11 @@ spec:
           image: {{ .Values.image }}
           args: ["--config=/conf/otel.yaml"]
           env:
-            - name: DT_API_TOKEN
+            - name: NEW_RELIC_LICENSE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.dynatrace.credentialsSecret }}
-                  key: {{ .Values.dynatrace.tokenField }}
+                  name: {{ .Values.newrelic.credentialsSecret }}
+                  key: {{ .Values.newrelic.licenseKeyField }}
           resources: {{ toYaml .Values.resources | nindent 12 }}
           ports:
             - {name: grpc, containerPort: 4317}
@@ -117,15 +115,15 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ .Release.Name }}-dynatrace
+            name: {{ .Release.Name }}-newrelic
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-dynatrace
+  name: {{ .Release.Name }}-newrelic
 spec:
   selector:
-    app: {{ .Release.Name }}-dynatrace
+    app: {{ .Release.Name }}-newrelic
   ports:
     - {name: grpc, port: 4317, targetPort: grpc}
     - {name: http, port: 4318, targetPort: http}

@@ -1,10 +1,10 @@
 apiVersion: v2
-name: datadog
-description: Dedicated Speedscale BYOC channel for Datadog logs, traces, and metrics.
+name: newrelic
+description: Dedicated Speedscale BYOC channel for New Relic logs, traces, and metrics.
 type: application
-version: 1.1.0
+version: 1.0.0
 appVersion: "0.160.0"
-keywords: [speedscale, byoc, datadog, opentelemetry]
+keywords: [speedscale, byoc, newrelic, opentelemetry]
 home: https://github.com/speedscale/speedscale-byoc
 maintainers:
   - name: Speedscale

@@ -24,7 +24,7 @@ forwarder:
       dlp_config_id: standard
 ```
 
-The Forwarder sends RRPairs through the logs pipeline. Applications can send OTLP traces and metrics to the same Dynatrace collector service. The collector appends `/v1/logs`, `/v1/traces`, or `/v1/metrics` to the configured base endpoint.
+The Forwarder sends RRPairs through the logs pipeline. Applications can send OTLP traces and metrics to the same Dynatrace collector service. The collector extracts W3C trace context from captured request headers, copies the RRPair workload into `service.name`, maps HTTP 5xx responses and exception events to span errors, and converts cumulative metrics to delta temporality. It appends `/v1/logs`, `/v1/traces`, or `/v1/metrics` to the configured base endpoint.
 
 Verify the collector has no export errors, then use Dynatrace Logs or a Notebook to query recent RRPairs. Trace and service views require application spans; Speedscale capture logs alone do not synthesize APM spans.
 
