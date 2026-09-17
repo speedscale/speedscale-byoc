@@ -43,7 +43,8 @@ data:
               - set(log.cache["context"], ExtractPatterns(log.cache["traceparent"], "^00-(?P<trace>[0-9a-f]{32})-(?P<span>[0-9a-f]{16})-[0-9a-f]{2}$")) where log.cache["traceparent"] != nil
               - set(log.trace_id, TraceID(log.cache["context"]["trace"])) where log.cache["context"]["trace"] != nil
               - set(log.span_id, SpanID(log.cache["context"]["span"])) where log.cache["context"]["span"] != nil
-      cumulativetodelta: {}
+      cumulativetodelta:
+        max_staleness: 25h
       batch:
         timeout: 1s
         send_batch_size: 100

@@ -5,6 +5,7 @@
 - Correlate RRPair logs with W3C trace context and workload service names.
 - Mark HTTP 5xx spans and exception events as errors.
 - Convert cumulative application metrics to delta temporality for Dynatrace.
+- Bound retained conversion state for abandoned metric streams.
 
 ## [1.0.0] - 2026-09-16
 
