@@ -12,6 +12,8 @@ metadata:
   name: {{ include "gcs.name" . }}
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: {{ include "gcs.name" . }}
@@ -23,10 +25,19 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       serviceAccountName: {{ include "gcs.serviceAccount" . }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: collector
           image: {{ .Values.image }}
           args: ["--config=/conf/otel.yaml"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           resources: {{ toYaml .Values.resources | nindent 12 }}
           ports:
             - {name: grpc, containerPort: 4317}
@@ -38,10 +49,14 @@ spec:
             httpGet: {path: /, port: health}
           volumeMounts:
             - {name: config, mountPath: /conf, readOnly: true}
+            - {name: queue, mountPath: /var/lib/otel}
       volumes:
         - name: config
           configMap:
             name: {{ include "gcs.name" . }}
+        - name: queue
+          persistentVolumeClaim:
+            claimName: {{ include "gcs.name" . }}-queue
 ---
 apiVersion: v1
 kind: Service
@@ -53,3 +68,13 @@ spec:
   ports:
     - {name: grpc, port: 4317, targetPort: grpc}
     - {name: http, port: 4318, targetPort: http}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "gcs.name" . }}-queue
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ .Values.delivery.persistence.size }}

@@ -1,0 +1,14 @@
+# Elastic OTLP endpoint. Create Secret `byoc-elastic` with key `token`.
+otlp:
+  endpoint: https://CHANGEME.elastic-cloud.com:443/v1/logs
+  headerName: Authorization
+  headerPrefix: "ApiKey "
+  tokenSecret: byoc-elastic
+securityProfile:
+  enabled: true
+  includeFullPayload: false
+delivery:
+  retryMaxElapsedTime: 0s
+  persistence:
+    enabled: true
+    size: 2Gi

@@ -151,7 +151,7 @@
       },
       "targets": [
         {
-          "expr": "count without () (count by (body_location) (count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | body_l7protocol=\"http\" | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range])))",
+          "expr": "count without () (count by (location) (count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | l7protocol=\"http\" | keep cluster, service, command, status, location | command=~\"$method\" | status=~\"$status\" | location=~\"$endpoint\" [$__range])))",
           "refId": "A",
           "instant": true
         }
@@ -274,7 +274,7 @@
       },
       "targets": [
         {
-          "expr": "topk(20, sum by (service, body_location)(count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | body_l7protocol=\"http\" | keep cluster, service, body_command, body_status, body_location | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" [$__range])))",
+          "expr": "topk(20, sum by (service, location)(count_over_time({service=~\"$service\", cluster=~\"$cluster\"} | json | l7protocol=\"http\" | keep cluster, service, command, status, location | command=~\"$method\" | status=~\"$status\" | location=~\"$endpoint\" [$__range])))",
           "refId": "A",
           "instant": true,
           "format": "table"
@@ -289,12 +289,12 @@
             },
             "indexByName": {
               "service": 0,
-              "body_location": 1,
+              "location": 1,
               "Value": 2
             },
             "renameByName": {
               "service": "service",
-              "body_location": "endpoint",
+              "location": "endpoint",
               "Value": "requests"
             }
           }
@@ -329,7 +329,7 @@
       },
       "targets": [
         {
-          "expr": "{service=~\"$service\", cluster=~\"$cluster\"} | json | body_l7protocol=\"http\" | keep cluster, service, body_command, body_status, body_duration, body_location, body_dlpModified | body_command=~\"$method\" | body_status=~\"$status\" | body_location=~\"$endpoint\" | line_format \"{{.cluster}}/{{.service}}  {{.body_command}} {{.body_status}} {{ printf \\\"%4s\\\" .body_duration }}ms  {{.body_location}}  {{ if eq .body_dlpModified \\\"true\\\" }}[dlp]{{end}}\"",
+          "expr": "{service=~\"$service\", cluster=~\"$cluster\"} | json | l7protocol=\"http\" | keep cluster, service, command, status, duration, location, dlpModified | command=~\"$method\" | status=~\"$status\" | location=~\"$endpoint\" | line_format \"{{.cluster}}/{{.service}}  {{.command}} {{.status}} {{ printf \\\"%4s\\\" .duration }}ms  {{.location}}  {{ if eq .dlpModified \\\"true\\\" }}[dlp]{{end}}\"",
           "refId": "A"
         }
       ],

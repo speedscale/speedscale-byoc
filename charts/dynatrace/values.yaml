@@ -9,3 +9,10 @@ resources:
     memory: 256Mi
   limits:
     memory: 512Mi
+delivery:
+  queueSize: 1000
+  retryMaxElapsedTime: 300s
+networkPolicy:
+  enabled: true
+  allowedNamespaces:
+    - speedscale

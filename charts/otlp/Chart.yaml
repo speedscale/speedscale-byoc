@@ -2,8 +2,8 @@ apiVersion: v2
 name: otlp
 description: Generic Speedscale BYOC OTLP logs channel for backends without a dedicated chart.
 type: application
-version: 1.2.0
-appVersion: "1.2.0"
+version: 2.0.0
+appVersion: "2.0.0"
 keywords:
   - speedscale
   - byoc

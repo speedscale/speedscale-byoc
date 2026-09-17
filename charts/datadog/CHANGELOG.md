@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.0] - 2026-09-17
+
+- Add configurable sending queues and retries, rollout checksums, pod hardening, and restricted OTLP ingress.
+
 ## [1.1.0] - 2026-09-17
 
 - Correlate RRPair logs with W3C trace context and workload service names.

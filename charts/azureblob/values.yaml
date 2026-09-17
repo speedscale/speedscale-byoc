@@ -32,4 +32,21 @@ azure:
 # otelcol-contrib image until ~v0.153.0 — verified live: 0.123.0 fails with
 # "unknown type: azureblob". 0.153.0 includes it.
 image:
-  otelCollector: otel/opentelemetry-collector-contrib:0.153.0
+  otelCollector: otel/opentelemetry-collector-contrib:0.160.0@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+delivery:
+  queueSize: 1000
+  persistence:
+    size: 2Gi
+
+networkPolicy:
+  enabled: true
+  allowedNamespaces:
+    - speedscale

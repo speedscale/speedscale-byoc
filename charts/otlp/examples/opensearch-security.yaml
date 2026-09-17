@@ -1,0 +1,15 @@
+# OpenSearch Data Prepper OTLP/HTTP source. The matching pipeline is documented
+# in examples/security/opensearch-data-prepper.yaml.
+otlp:
+  endpoint: https://data-prepper.example.com:21893/v1/logs
+  headerName: Authorization
+  headerPrefix: "Bearer "
+  tokenSecret: byoc-opensearch
+securityProfile:
+  enabled: true
+  includeFullPayload: false
+delivery:
+  retryMaxElapsedTime: 0s
+  persistence:
+    enabled: true
+    size: 2Gi

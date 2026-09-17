@@ -62,23 +62,15 @@ data:
 
     processors:
       batch: {}
-      # The OTEL Loki exporter only promotes a log record's attributes to Loki
-      # stream labels when a hint attribute `loki.attribute.labels` lists them
-      # (and `loki.resource.labels` for resource-level attrs). Without this,
-      # the exporter silently produces zero streams. The Speedscale forwarder
-      # sets attributes `service` and `namespace` on each RRPair log record
-      # (lib/exporter/otel_logs.go:rrpairToLogRecord), and the resource has
-      # `cluster`. Promote them so we can filter in Grafana.
-      attributes/loki-hints:
-        actions:
-          - key: loki.attribute.labels
-            value: service,namespace
-            action: insert
-      resource/loki-hints:
-        attributes:
-          - key: loki.resource.labels
-            value: cluster
-            action: insert
+      # Loki's native OTLP endpoint promotes selected resource attributes to
+      # labels. The forwarder supplies service and namespace as log attributes,
+      # so copy them onto the resource alongside its existing cluster value.
+      transform/loki-labels:
+        log_statements:
+          - context: log
+            statements:
+              - set(resource.attributes["service"], attributes["service"])
+              - set(resource.attributes["namespace"], attributes["namespace"])
 
       # --- Metrics derivation processors ---
       # Promotes RRPair body fields to log attributes so the count and sum
@@ -138,11 +130,8 @@ data:
               - key: svc
 
     exporters:
-      loki:
-        endpoint: http://loki.{{ .Release.Namespace }}.svc.cluster.local:3100/loki/api/v1/push
-        default_labels_enabled:
-          exporter: true
-          job: true
+      otlphttp/loki:
+        endpoint: http://loki.{{ .Release.Namespace }}.svc.cluster.local:3100/otlp
       # Push scraped Prometheus metrics into the in-cluster Prometheus via
       # its remote-write receiver (prometheus.yaml enables
       # --web.enable-remote-write-receiver).
@@ -164,11 +153,11 @@ data:
     service:
       extensions: [health_check]
       pipelines:
-        # Original logs pipeline: all rrpairs -> Loki. UNCHANGED.
+        # All RRPairs flow to Loki's native OTLP endpoint.
         logs:
           receivers: [otlp]
-          processors: [resource/loki-hints, attributes/loki-hints, batch]
-          exporters: [loki, debug]
+          processors: [transform/loki-labels, batch]
+          exporters: [otlphttp/loki, debug]
 
         # Metrics derivation branch: same otlp receiver fans out to this
         # pipeline in parallel (OTel fan-out is safe - each pipeline gets
@@ -201,12 +190,24 @@ spec:
     metadata:
       labels:
         app: otel-collector
+      annotations:
+        checksum/config: {{ toYaml .Values | sha256sum }}
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: otel-collector
           image: {{ .Values.image.otelCollector }}
           args:
             - "--config=/conf/otel.yaml"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 4317
               name: otlp-grpc

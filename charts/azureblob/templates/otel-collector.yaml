@@ -16,6 +16,10 @@ data:
             endpoint: 0.0.0.0:4318
 
     processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 400
+        spike_limit_mib: 80
       batch: {}
 
     exporters:
@@ -31,19 +35,29 @@ data:
         container:
           logs: {{ .Values.azure.container | quote }}
         format: json
+        sending_queue:
+          enabled: true
+          queue_size: {{ .Values.delivery.queueSize }}
+          storage: file_storage
+        retry_on_failure:
+          enabled: true
+          max_elapsed_time: 0s
       debug:
         verbosity: basic
 
     extensions:
       health_check:
         endpoint: 0.0.0.0:13133
+      file_storage:
+        directory: /var/lib/otel/queue
+        create_directory: true
 
     service:
-      extensions: [health_check]
+      extensions: [health_check, file_storage]
       pipelines:
         logs:
           receivers: [otlp]
-          processors: [batch]
+          processors: [memory_limiter, batch]
           exporters: [azure_blob, debug]
 ---
 apiVersion: apps/v1
@@ -53,6 +67,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: otel-collector
@@ -60,10 +76,23 @@ spec:
     metadata:
       labels:
         app: otel-collector
+      annotations:
+        checksum/config: {{ toYaml .Values | sha256sum }}
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: otel-collector
           image: {{ .Values.image.otelCollector }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources: {{ toYaml .Values.resources | nindent 12 }}
           args:
             - "--config=/conf/otel.yaml"
           ports:
@@ -100,10 +129,16 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /conf
+              readOnly: true
+            - name: queue
+              mountPath: /var/lib/otel
       volumes:
         - name: config
           configMap:
             name: otel-collector-config
+        - name: queue
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-otel-queue
 ---
 apiVersion: v1
 kind: Service
@@ -122,3 +157,13 @@ spec:
       protocol: TCP
       port: 4318
       targetPort: 4318
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-otel-queue
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ .Values.delivery.persistence.size }}

@@ -29,7 +29,7 @@ Power-user mode bypasses the flag translation:
 
     python3 loki-gather.py \\
       --loki-url http://localhost:38030 \\
-      --logql    '{service="java-server"} | json | body_status=~"2.."' \\
+      --logql    '{service="java-server"} | json | status=~"2.."' \\
       --start    -15m \\
       --out-dir  /tmp/x
 
@@ -79,7 +79,7 @@ def parse_time(s: str, *, now: datetime | None = None) -> datetime:
 
 
 # Body fields we parse out of the JSON log line so the LogQL filter stages
-# (`| body_status=~...`, `| body_direction=...`) can act on them server-side.
+# (`| status=~...`, `| direction=...`) can act on them server-side.
 #
 # This is a FILTER-ONLY concern. We deliberately do NOT `| keep` these fields:
 # `keep` prunes the extracted label set, and on some Loki configurations it
@@ -89,9 +89,7 @@ def parse_time(s: str, *, now: datetime | None = None) -> datetime:
 # the Loki log line literally IS the full RRPair JSON the forwarder emitted.
 # So `| json` extracts the body_* fields for filtering, the filter stages run
 # server-side, and `query_loki` writes the untouched original line.
-BODY_FILTER_FIELDS = [
-    "body_command", "body_status", "body_location", "body_direction",
-]
+BODY_FILTER_FIELDS = ["command", "status", "location", "direction"]
 
 
 def build_logql(args: argparse.Namespace) -> str:
@@ -118,13 +116,13 @@ def build_logql(args: argparse.Namespace) -> str:
     pipeline = ["| json"]
 
     if args.method:
-        pipeline.append(f'| body_command=~"{args.method}"')
+        pipeline.append(f'| command=~"{args.method}"')
     if args.status:
-        pipeline.append(f'| body_status=~"{args.status}"')
+        pipeline.append(f'| status=~"{args.status}"')
     if args.endpoint:
-        pipeline.append(f'| body_location=~"{args.endpoint}"')
+        pipeline.append(f'| location=~"{args.endpoint}"')
     if args.direction:
-        pipeline.append(f'| body_direction="{args.direction}"')
+        pipeline.append(f'| direction="{args.direction}"')
 
     return "{" + ", ".join(stream) + "} " + " ".join(pipeline)
 
@@ -201,7 +199,12 @@ def _query_page(api: str, logql: str, start_ns: int, end_ns: int, page_lines: in
                 # `body`-shaped object per line; anything else is noise (e.g.
                 # health checks, debug exporter logs) we don't want.
                 continue
+            # The retired Loki exporter wrapped OTLP records in a top-level
+            # `body` key. Loki's native OTLP endpoint stores LogRecord.Body as
+            # the line itself. Accept both shapes during an upgrade.
             body = rec.get("body")
+            if not isinstance(body, dict) and rec.get("msgType") == "rrpair":
+                body = rec
             if not isinstance(body, dict):
                 continue
             out.append((int(ts_ns), labels, body))

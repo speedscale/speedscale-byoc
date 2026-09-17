@@ -1,6 +1,6 @@
 # Speedscale BYOC: Grafana + Loki
 
-This reference architecture captures real traffic from your apps, ships it through the Speedscale Forwarder to your own Loki, and lets you slice it through Grafana — then pull any subset back out as a `proxymock`-replayable directory for tests.
+This local-demo reference architecture captures real traffic from your apps, ships it through the Speedscale Forwarder to your own Loki, and lets you slice it through Grafana, then pull any subset back out as a `proxymock`-replayable directory for tests. It exposes NodePorts, disables Loki authentication, and uses a default Grafana password; do not deploy it unchanged in a shared or production environment.
 
 ## Architecture
 
@@ -187,7 +187,7 @@ To upgrade images only without changing chart values:
 
 ```bash
 helm upgrade byoc-grafana speedscale-byoc/grafana -n byoc-grafana \
-  --set image.loki=grafana/loki:3.0.0 \
+  --set image.loki=grafana/loki:3.5.5 \
   --reuse-values
 ```
 
@@ -221,7 +221,7 @@ See [`scripts/README.md`](../../scripts/README.md) for all filter flags and work
 | `retention.prometheus` | `24h` | How long Prometheus keeps metrics |
 | `grafana.adminUser` | `admin` | Grafana admin username |
 | `grafana.adminPassword` | `admin` | Grafana admin password — **change this for any shared environment** |
-| `image.loki` | `grafana/loki:2.9.8` | Loki container image |
+| `image.loki` | `grafana/loki:3.5.5` | Loki container image |
 | `image.grafana` | `grafana/grafana:11.1.4` | Grafana container image |
 | `image.prometheus` | `prom/prometheus:v2.54.1` | Prometheus container image |
-| `image.otelCollector` | `otel/opentelemetry-collector-contrib:0.108.0` | OTel Collector image |
+| `image.otelCollector` | digest-pinned `otel/opentelemetry-collector-contrib:0.160.0` | OTel Collector image |

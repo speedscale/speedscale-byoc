@@ -3,7 +3,7 @@
   "title": "Speedscale BYOC OTel Collector → Azure Blob Storage chart values",
   "type": "object",
   "additionalProperties": false,
-  "required": ["azure"],
+  "required": ["azure", "resources", "delivery", "networkPolicy"],
   "properties": {
     "azure": {
       "type": "object",
@@ -37,6 +37,30 @@
           "minLength": 1,
           "description": "Must be opentelemetry-collector-contrib (azureblob is contrib-only, present from v0.121.0)"
         }
+      }
+    },
+    "resources": {"type": "object"},
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["queueSize", "persistence"],
+      "properties": {
+        "queueSize": {"type": "integer", "minimum": 1},
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["size"],
+          "properties": {"size": {"type": "string", "pattern": "^[0-9]+(Ki|Mi|Gi|Ti)$"}}
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "allowedNamespaces"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "allowedNamespaces": {"type": "array", "items": {"type": "string", "minLength": 1}}
       }
     }
   }

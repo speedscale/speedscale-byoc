@@ -1,6 +1,6 @@
 # Speedscale BYOC
 
-Reference Helm charts for sending captured Speedscale traffic to storage and observability systems controlled by the customer.
+Reference Helm charts for sending captured Speedscale traffic to storage, observability, and security systems controlled by the customer.
 
 ## Destination channels
 
@@ -18,17 +18,19 @@ Additional charts remain independent destinations:
 
 | Chart | Destination |
 |---|---|
-| [`charts/grafana/`](charts/grafana/) | Loki and Prometheus in the same Grafana stack |
-| [`charts/elasticsearch/`](charts/elasticsearch/) | Elasticsearch and Kibana |
+| [`charts/grafana/`](charts/grafana/) | Local-demo Loki and Prometheus stack with Grafana |
+| [`charts/elasticsearch/`](charts/elasticsearch/) | Local-demo Elasticsearch and Kibana stack |
 | [`charts/azureblob/`](charts/azureblob/) | Azure Blob Storage |
 | [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | Legacy GCS path using the S3-compatible API and HMAC |
-| [`charts/otlp/`](charts/otlp/) | One generic OTLP logs backend without a dedicated chart |
+| [`charts/splunk/`](charts/splunk/) | Splunk HEC security channel with metadata-only defaults |
+| [`charts/kafka/`](charts/kafka/) | Durable Kafka bridge for security and data pipelines |
+| [`charts/otlp/`](charts/otlp/) | One generic OTLP backend, including Elastic, LogScale, and OpenSearch security presets |
 
 ## Wiring
 
 Install the Speedscale Operator separately. Add one named Forwarder exporter for every enabled destination:
 
-The [`examples/destination-exporters.yaml`](examples/destination-exporters.yaml) template contains the five primary options in one values file. Keep an entry to enable that destination and remove it to disable the channel.
+The [`examples/destination-exporters.yaml`](examples/destination-exporters.yaml) template contains the primary observability, archive, and security options in one values file. Keep an entry to enable that destination and remove it to disable the channel.
 
 ```yaml
 forwarder:
@@ -100,10 +102,11 @@ Companion scripts for legacy GCS, S3, Loki, Elasticsearch, Azure Blob, and gener
 ```sh
 for chart in charts/*/; do helm lint --strict "$chart"; done
 python3 tests/test_channel_boundaries.py
+python3 tests/test_security_contract.py
 python3 -m unittest discover -s recipes/datadog-to-replay -p 'test_*.py' -v
 ```
 
-The boundary test renders the five primary charts and verifies each collector contains only its declared destination exporter.
+The tests render every destination collector, verify each channel contains only its declared backend, and enforce the shared rollout, pod-hardening, NetworkPolicy, and metadata-only security contracts.
 
 ## License
 

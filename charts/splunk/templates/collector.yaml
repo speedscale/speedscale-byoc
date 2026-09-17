@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-collector
+data:
+  collector.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc: {endpoint: 0.0.0.0:4317}
+          http: {endpoint: 0.0.0.0:4318}
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 75
+        spike_limit_percentage: 15
+      transform/security:
+        error_mode: ignore
+        log_statements:
+          - context: log
+            statements:
+              - set(attributes["event.kind"], "event")
+              - set(attributes["event.category"], "network")
+              - set(attributes["event.type"], "connection")
+              - set(attributes["speedscale.message_type"], body["msgType"])
+              - set(attributes["k8s.workload.name"], body["service"])
+              - set(attributes["network.direction"], body["direction"])
+              - set(attributes["network.protocol.name"], body["l7protocol"])
+              - set(attributes["http.request.method"], body["command"])
+              - set(attributes["url.path"], body["location"])
+              - set(attributes["http.response.status_code"], Int(body["status"])) where IsString(body["status"])
+              - set(attributes["speedscale.traffic_id"], body["uuid"])
+              - set(attributes["speedscale.dlp_modified"], body["dlpModified"])
+              - set(attributes["client.address"], body["source"])
+              - set(attributes["server.address"], body["destination"])
+{{- if not .Values.securityProfile.includeFullPayload }}
+              - set(body, attributes)
+{{- end }}
+      batch: {}
+    exporters:
+      splunk_hec:
+        endpoint: {{ .Values.splunk.endpoint | quote }}
+        token: ${env:SPLUNK_HEC_TOKEN}
+        index: {{ .Values.splunk.index | quote }}
+        source: {{ .Values.splunk.source | quote }}
+        sourcetype: {{ .Values.splunk.sourceType | quote }}
+        sending_queue:
+          enabled: true
+          queue_size: {{ .Values.delivery.queueSize }}
+        retry_on_failure:
+          enabled: true
+          max_elapsed_time: {{ .Values.delivery.retryMaxElapsedTime }}
+    extensions:
+      health_check: {endpoint: 0.0.0.0:13133}
+    service:
+      extensions: [health_check]
+      pipelines:
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, transform/security, batch]
+          exporters: [splunk_hec]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: {{ .Release.Name }}-collector}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: {{ .Release.Name }}-collector}
+      annotations:
+        checksum/config: {{ toYaml .Values | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: collector
+          image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest }}
+          args: ["--config=/conf/collector.yaml"]
+          env:
+            - name: SPLUNK_HEC_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.splunk.tokenSecret }}
+                  key: {{ .Values.splunk.tokenKey }}
+          ports:
+            - {name: otlp-grpc, containerPort: 4317}
+            - {name: otlp-http, containerPort: 4318}
+            - {name: health, containerPort: 13133}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          resources: {{ toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - {name: config, mountPath: /conf, readOnly: true}
+      volumes:
+        - name: config
+          configMap: {name: {{ .Release.Name }}-collector}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-collector
+spec:
+  selector: {app.kubernetes.io/name: {{ .Release.Name }}-collector}
+  ports:
+    - {name: otlp-grpc, port: 4317, targetPort: 4317}
+    - {name: otlp-http, port: 4318, targetPort: 4318}

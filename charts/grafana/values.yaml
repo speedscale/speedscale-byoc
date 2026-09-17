@@ -17,7 +17,7 @@ nodePort:
   grafana: 30030
   loki: 30031
 
-# Pod-level storage. Demo cluster — sized to survive a load test, not a
+# Pod-level storage. Demo cluster - sized to survive a load test, not a
 # week of production traffic.
 storage:
   loki: 5Gi
@@ -29,16 +29,15 @@ retention:
   loki: 24h
   prometheus: 24h
 
-# Grafana admin credentials. Default `admin/admin` matches the upstream
-# Grafana convention. Override for any environment that's not a one-laptop
-# demo.
+# Grafana admin credentials. These intentionally convenient defaults are for
+# local demos only. Override both values in any shared environment.
 grafana:
   adminUser: admin
   adminPassword: admin
 
 # Image pins. Bump as needed; tested combinations are checked into the README.
 image:
-  loki: grafana/loki:2.9.8
+  loki: grafana/loki:3.5.5
   grafana: grafana/grafana:11.1.4
   prometheus: prom/prometheus:v2.54.1
-  otelCollector: otel/opentelemetry-collector-contrib:0.120.0
+  otelCollector: otel/opentelemetry-collector-contrib:0.160.0@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6

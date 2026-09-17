@@ -1,52 +1,89 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
-  "title": "Speedscale BYOC OTel Collector → OTLP backend chart values",
   "type": "object",
   "additionalProperties": false,
-  "required": ["otlp"],
+  "required": ["otlp", "securityProfile", "delivery", "networkPolicy", "resources", "image"],
   "properties": {
     "otlp": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["endpoint", "headerName", "tokenSecret"],
+      "required": ["endpoint", "baseEndpoint", "headerName", "headerPrefix", "tokenSecret", "tokenKey", "additionalHeaders", "compression", "signals", "tls"],
       "properties": {
-        "endpoint": {
-          "type": "string",
-          "format": "uri",
-          "minLength": 1,
-          "description": "Exact OTLP logs endpoint URL, including /v1/logs"
+        "endpoint": {"type": "string", "format": "uri", "minLength": 1},
+        "baseEndpoint": {"type": "string"},
+        "headerName": {"type": "string", "minLength": 1},
+        "headerPrefix": {"type": "string"},
+        "tokenSecret": {"type": "string", "minLength": 1},
+        "tokenKey": {"type": "string", "minLength": 1},
+        "additionalHeaders": {"type": "object", "additionalProperties": {"type": "string"}},
+        "compression": {"type": "string", "enum": ["gzip", "none"]},
+        "signals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["logs", "traces", "metrics"],
+          "properties": {
+            "logs": {"type": "boolean"},
+            "traces": {"type": "boolean"},
+            "metrics": {"type": "boolean"}
+          }
         },
-        "headerName": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Auth header name (Authorization, dd-api-key, x-honeycomb-team, api-key, …)"
-        },
-        "headerPrefix": {
-          "type": "string",
-          "description": "Value prefix prepended to the token"
-        },
-        "tokenSecret": {
-          "type": "string",
-          "minLength": 1,
-          "description": "K8s Secret name holding the API token/key under data key 'token'"
-        },
-        "compression": {
-          "type": "string",
-          "enum": ["gzip", "none"],
-          "description": "OTLP/HTTP request compression"
+        "tls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["insecureSkipVerify", "caSecret", "caKey", "clientSecret", "certKey", "keyKey"],
+          "properties": {
+            "insecureSkipVerify": {"type": "boolean"},
+            "caSecret": {"type": "string"},
+            "caKey": {"type": "string", "minLength": 1},
+            "clientSecret": {"type": "string"},
+            "certKey": {"type": "string", "minLength": 1},
+            "keyKey": {"type": "string", "minLength": 1}
+          }
         }
       }
     },
+    "securityProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "includeFullPayload"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "includeFullPayload": {"type": "boolean"}
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["queueSize", "retryMaxElapsedTime", "persistence"],
+      "properties": {
+        "queueSize": {"type": "integer", "minimum": 1},
+        "retryMaxElapsedTime": {"type": "string", "pattern": "^[0-9]+(ms|s|m|h)$"},
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "size"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "size": {"type": "string", "pattern": "^[0-9]+(Ki|Mi|Gi|Ti)$"}
+          }
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "allowedNamespaces"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "allowedNamespaces": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "resources": {"type": "object"},
     "image": {
       "type": "object",
       "additionalProperties": false,
-      "properties": {
-        "otelCollector": {
-          "type": "string",
-          "minLength": 1,
-          "description": "OTel Collector image (contrib distribution recommended)"
-        }
-      }
+      "required": ["otelCollector"],
+      "properties": {"otelCollector": {"type": "string", "minLength": 1}}
     }
   }
 }

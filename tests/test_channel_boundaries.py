@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
 """Render primary destination charts and enforce one backend per channel."""
 
-import re
 import subprocess
 from pathlib import Path
+
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {
     "fluentbit-s3": {"awss3", "debug"},
+    "fluentbit-gcs": {"awss3", "debug"},
     "gcs": {"google_cloud_storage"},
+    "azureblob": {"azure_blob", "debug"},
     "datadog": {"datadog"},
     "dynatrace": {"otlphttp/dynatrace"},
     "newrelic": {"otlphttp/newrelic"},
+    "elasticsearch": {"elasticsearch", "debug"},
+    "grafana": {"otlphttp/loki", "prometheusremotewrite", "debug"},
+    "otlp": {"otlphttp/logs"},
+    "splunk": {"splunk_hec"},
+    "kafka": {"kafka"},
 }
 
 
@@ -20,20 +28,23 @@ def collector_config(chart):
         ["helm", "template", "boundary-test", str(ROOT / "charts" / chart)],
         text=True,
     )
-    matches = re.findall(r"  otel\.yaml: \|\n(.*?)(?=\n---|\Z)", rendered, re.DOTALL)
-    if len(matches) != 1:
-        raise AssertionError(f"{chart}: expected one collector config, found {len(matches)}")
-    return "\n".join(line[4:] if line.startswith("    ") else line for line in matches[0].splitlines())
+    configs = []
+    for item in yaml.safe_load_all(rendered):
+        if not item or item.get("kind") != "ConfigMap":
+            continue
+        for key in ("otel.yaml", "collector.yaml"):
+            if key in item.get("data", {}):
+                configs.append(yaml.safe_load(item["data"][key]))
+    if len(configs) != 1:
+        raise AssertionError(f"{chart}: expected one collector config, found {len(configs)}")
+    return configs[0]
 
 
 def exporter_names(config):
-    match = re.search(r"^exporters:\n(.*?)(?=^[a-z_]+:\n)", config, re.MULTILINE | re.DOTALL)
-    if not match:
+    exporters = config.get("exporters")
+    if not exporters:
         raise AssertionError("collector config has no exporters section")
-    return {
-        item.group(1)
-        for item in re.finditer(r"^  ([A-Za-z0-9_./-]+):", match.group(1), re.MULTILINE)
-    }
+    return set(exporters)
 
 
 def main():
@@ -47,7 +58,7 @@ def main():
         if token in datadog_recipe:
             raise AssertionError(f"Datadog recipe still depends on GCS: {token}")
 
-    print("validated independent S3, GCS, Datadog, Dynatrace, and New Relic channels")
+    print(f"validated {len(EXPECTED)} independent destination channels")
 
 
 if __name__ == "__main__":
