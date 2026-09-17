@@ -5,6 +5,40 @@ entries:
       artifacthub.io/category: infrastructure
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
+    appVersion: 0.160.0
+    created: "2026-09-17T23:23:53.910133924Z"
+    description: 'Speedscale BYOC → OTel Collector → Azure Blob Storage. The collector''s
+      azureblob exporter writes OTLP-JSON blobs to your container; no in-cluster storage.
+      Pairs with the Speedscale Operator chart (installed separately into the `speedscale`
+      namespace); this chart installs only the in-cluster pipeline that receives RRPairs
+      from the Forwarder''s byoc_azure exporter and ships them to long-term object
+      storage. '
+    digest: df02ef302ab33e8d8a01b1229137780b29c9ecd3fcbfd807968ea2cc604329f3
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - azure
+    - azure-blob-storage
+    - opentelemetry
+    - azureblob
+    - archive
+    - data-lake
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: azureblob
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/azureblob
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/azureblob-1.1.0/azureblob-1.1.0.tgz
+    version: 1.1.0
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
     appVersion: 0.153.0
     created: "2026-06-02T22:24:11.301569421Z"
     description: 'Speedscale BYOC → OTel Collector → Azure Blob Storage. The collector''s
@@ -36,6 +70,25 @@ entries:
     - https://github.com/speedscale/speedscale-byoc/releases/download/azureblob-1.0.0/azureblob-1.0.0.tgz
     version: 1.0.0
   datadog:
+  - apiVersion: v2
+    appVersion: 0.160.0
+    created: "2026-09-17T23:23:54.090143669Z"
+    description: Dedicated Speedscale BYOC channel for Datadog logs, traces, and metrics.
+    digest: d476c68cdab34d12638363f60477cb35832c2acf11ba0887e8a6f6298daea8bb
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - datadog
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: datadog
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/datadog-1.2.0/datadog-1.2.0.tgz
+    version: 1.2.0
   - apiVersion: v2
     appVersion: 0.160.0
     created: "2026-09-17T15:03:22.672907015Z"
@@ -75,6 +128,26 @@ entries:
     - https://github.com/speedscale/speedscale-byoc/releases/download/datadog-1.0.0/datadog-1.0.0.tgz
     version: 1.0.0
   dynatrace:
+  - apiVersion: v2
+    appVersion: 0.160.0
+    created: "2026-09-17T23:23:54.270262858Z"
+    description: Dedicated Speedscale BYOC channel for Dynatrace logs, traces, and
+      metrics.
+    digest: 3cdceafec7ee1b4f928c96aa9e45acc78c6817e020264443232bfb523ef02a13
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - dynatrace
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: dynatrace
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/dynatrace-1.2.0/dynatrace-1.2.0.tgz
+    version: 1.2.0
   - apiVersion: v2
     appVersion: 0.160.0
     created: "2026-09-17T15:03:22.933134057Z"
@@ -121,6 +194,36 @@ entries:
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
     appVersion: 1.0.0
+    created: "2026-09-17T23:23:54.438398415Z"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Elasticsearch
+      → Kibana. Single-node demo stack sized for minikube. Pairs with the Speedscale
+      Operator chart (installed separately into the `speedscale` namespace); this
+      chart installs only the backend that receives RRPair logs from the Forwarder''s
+      byoc_es exporter. '
+    digest: f2a61bbc088ebd41dff1692ef52188badba5852612ac357c7f9e2652b82aaf67
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - elasticsearch
+    - kibana
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: elasticsearch
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/elasticsearch
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/elasticsearch-1.0.1/elasticsearch-1.0.1.tgz
+    version: 1.0.1
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
     created: "2026-05-28T06:32:05.111285-04:00"
     description: 'Speedscale BYOC reference architecture — OTel Collector → Elasticsearch
       → Kibana. Single-node demo stack sized for minikube. Pairs with the Speedscale
@@ -142,6 +245,41 @@ entries:
     - https://github.com/speedscale/speedscale-byoc/releases/download/elasticsearch-1.0.0/elasticsearch-1.0.0.tgz
     version: 1.0.0
   fluentbit-gcs:
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 2.0.0
+    created: "2026-09-17T23:23:54.633167945Z"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Google
+      Cloud Storage. The collector''s native awss3 exporter writes OTLP-JSON objects
+      directly to a GCS bucket via the GCS S3-compatible XML API (HMAC credentials).
+      No Fluent Bit required. Pairs with the Speedscale Operator chart (installed
+      separately into the `speedscale` namespace); this chart installs only the in-cluster
+      pipeline that receives RRPairs from the Forwarder''s byoc_gcs exporter and ships
+      them to long-term object storage. '
+    digest: d67b3b6472448e7d1fd1596024ffbcb9aee02be2f1e12e933a7058678ac69aac
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - gcs
+    - google-cloud-storage
+    - opentelemetry
+    - awss3
+    - archive
+    - data-lake
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: fluentbit-gcs
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/fluentbit-gcs
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-gcs-2.0.1/fluentbit-gcs-2.0.1.tgz
+    version: 2.0.1
   - annotations:
       artifacthub.io/category: infrastructure
       artifacthub.io/license: Apache-2.0
@@ -208,6 +346,40 @@ entries:
     - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-gcs-1.0.0/fluentbit-gcs-1.0.0.tgz
     version: 1.0.0
   fluentbit-s3:
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 2.1.0
+    created: "2026-09-17T23:23:54.803430373Z"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Amazon
+      S3. The chart name/path are legacy compatibility names from the prior Fluent
+      Bit implementation. The collector''s native awss3 exporter writes OTLP-JSON
+      objects directly to S3. Supports both static IAM credentials (Secret) and EKS
+      IRSA (no credentials in cluster). No Fluent Bit required. Pairs with the Speedscale
+      Operator chart (installed separately into the `speedscale` namespace). '
+    digest: 49adfae79105ed3c2f62adad3f29afdce85ac0bde8250a84108c8f15fd268508
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - s3
+    - aws
+    - opentelemetry
+    - awss3
+    - archive
+    - data-lake
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: fluentbit-s3
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/fluentbit-s3
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-s3-2.2.0/fluentbit-s3-2.2.0.tgz
+    version: 2.2.0
   - annotations:
       artifacthub.io/category: infrastructure
       artifacthub.io/license: Apache-2.0
@@ -306,6 +478,16 @@ entries:
   gcs:
   - apiVersion: v2
     appVersion: 0.160.0
+    created: "2026-09-17T23:23:55.086436728Z"
+    description: Native Google Cloud Storage traffic archive.
+    digest: 1976f2a0b93bfa5447485cd60fda4ad468227ad2a562f5c5a8aa19e71aa3797c
+    name: gcs
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/gcs-1.1.0/gcs-1.1.0.tgz
+    version: 1.1.0
+  - apiVersion: v2
+    appVersion: 0.160.0
     created: "2026-09-16T13:30:21.184048712Z"
     description: Native Google Cloud Storage traffic archive.
     digest: 5375b623a229862271c964b40974e45492323722a2c4e57723fb2436682c6587
@@ -326,6 +508,36 @@ entries:
     - https://github.com/speedscale/speedscale-byoc/releases/download/gcs-datadog-0.1.0/gcs-datadog-0.1.0.tgz
     version: 0.1.0
   grafana:
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 2.0.0
+    created: "2026-09-17T23:23:55.256463691Z"
+    description: 'Speedscale BYOC reference architecture — OTel Collector → Loki →
+      Grafana. Single-node demo stack sized for minikube. Pairs with the Speedscale
+      Operator chart (installed separately into the `speedscale` namespace); this
+      chart installs only the backend that receives RRPair logs from the Forwarder''s
+      byoc_grafana exporter. '
+    digest: 549291aec7fdca6a58c277f87f0825b5a9da8843af9f0512f79db8949a07c482
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - loki
+    - grafana
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: grafana
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/grafana
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/grafana-2.0.0/grafana-2.0.0.tgz
+    version: 2.0.0
   - annotations:
       artifacthub.io/category: infrastructure
       artifacthub.io/license: Apache-2.0
@@ -351,7 +563,50 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/grafana-1.0.0/grafana-1.0.0.tgz
     version: 1.0.0
+  kafka:
+  - apiVersion: v2
+    appVersion: 0.160.0
+    created: "2026-09-17T23:23:55.420381853Z"
+    description: Speedscale BYOC OTLP logs bridge for Kafka security and data pipelines.
+    digest: 3a35e3fed123cc7a6ebd4ddc75ce63d7351a066437e8e906162c7a240769a528
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - kafka
+    - security
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: kafka
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/kafka
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/kafka-1.0.0/kafka-1.0.0.tgz
+    version: 1.0.0
   newrelic:
+  - apiVersion: v2
+    appVersion: 0.160.0
+    created: "2026-09-17T23:23:55.615246943Z"
+    description: Dedicated Speedscale BYOC channel for New Relic logs, traces, and
+      metrics.
+    digest: ef30dee09830033832f9161efd3246c415c811f7acff9d4cba85b95ece317f8f
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - newrelic
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: newrelic
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/newrelic-1.2.0/newrelic-1.2.0.tgz
+    version: 1.2.0
   - apiVersion: v2
     appVersion: 0.160.0
     created: "2026-09-17T15:03:23.275286972Z"
@@ -373,6 +628,34 @@ entries:
     - https://github.com/speedscale/speedscale-byoc/releases/download/newrelic-1.0.0/newrelic-1.0.0.tgz
     version: 1.0.0
   otlp:
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 2.0.0
+    created: "2026-09-17T23:23:55.787932788Z"
+    description: Generic Speedscale BYOC OTLP logs channel for backends without a
+      dedicated chart.
+    digest: cc5c2fa44d1702568d2243a5d21940da9bf0928f9a0a28cafa8c0ffd09b1a82f
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - otlp
+    - opentelemetry
+    - honeycomb
+    - logs
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: otlp
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/otlp
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/otlp-2.0.0/otlp-2.0.0.tgz
+    version: 2.0.0
   - annotations:
       artifacthub.io/category: monitoring-logging
       artifacthub.io/license: Apache-2.0
@@ -468,4 +751,27 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/otlp-1.0.0/otlp-1.0.0.tgz
     version: 1.0.0
-generated: "2026-09-17T15:03:23.494115787Z"
+  splunk:
+  - apiVersion: v2
+    appVersion: 0.160.0
+    created: "2026-09-17T23:23:55.963584706Z"
+    description: Dedicated Speedscale BYOC security channel for Splunk HEC.
+    digest: 46caa8b638d9f526b0e3b4f0b345fab2764ac6ad9fcdc476702403cc291af60b
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - splunk
+    - security
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: splunk
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/splunk
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/splunk-1.0.0/splunk-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-09-17T23:23:55.963629922Z"
