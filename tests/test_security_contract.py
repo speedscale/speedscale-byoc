@@ -47,6 +47,7 @@ def main():
     newrelic = render("newrelic")
     config = "\n".join(next(item for item in newrelic if item.get("kind") == "ConfigMap").get("data", {}).values())
     for required in (
+        'log.attributes["hostname"]',
         'set(log.body, Concat(',
         "groupbyattrs/service:",
         "span_metrics/newrelic:",

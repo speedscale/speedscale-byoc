@@ -36,6 +36,7 @@ data:
           - context: log
             statements:
               - set(log.attributes["service.name"], log.body["service"]) where log.body["service"] != nil
+              - set(log.attributes["hostname"], log.body["service"]) where log.body["service"] != nil
               - set(log.attributes["speedscale.workload"], log.body["service"]) where log.body["service"] != nil
               - set(log.attributes["speedscale.direction"], log.body["direction"]) where log.body["direction"] != nil
               - set(log.attributes["http.request.method"], log.body["http"]["req"]["method"]) where log.body["http"]["req"]["method"] != nil
