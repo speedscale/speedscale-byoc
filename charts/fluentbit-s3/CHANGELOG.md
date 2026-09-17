@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.2.0] - 2026-09-17
+
+- Upgrade the collector to digest-pinned 0.160.0.
+- Add a persistent queue with indefinite archive retries, resource controls, rollout checksums, pod hardening, and restricted OTLP ingress.
+
 ## [2.1.0] - 2026-06-19
 
 ### Added

@@ -3,7 +3,7 @@
   "title": "Speedscale BYOC OTel Collector → S3 chart values",
   "type": "object",
   "additionalProperties": false,
-  "required": ["s3"],
+  "required": ["s3", "delivery", "networkPolicy", "resources"],
   "properties": {
     "s3": {
       "type": "object",
@@ -85,6 +85,30 @@
           "minLength": 1,
           "description": "AWS CLI image used by the optional layout manifest upload job"
         }
+      }
+    },
+    "resources": {"type": "object"},
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["queueSize", "persistence"],
+      "properties": {
+        "queueSize": {"type": "integer", "minimum": 1},
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["size"],
+          "properties": {"size": {"type": "string", "pattern": "^[0-9]+(Ki|Mi|Gi|Ti)$"}}
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "allowedNamespaces"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "allowedNamespaces": {"type": "array", "items": {"type": "string", "minLength": 1}}
       }
     },
     "layout": {

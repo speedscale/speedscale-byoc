@@ -27,6 +27,6 @@ forwarder:
       dlp_config_id: standard
 ```
 
-Applications send OTLP traces and metrics to the same collector service. The collector copies the RRPair workload name into `service.name`, extracts W3C trace context from captured request headers, and marks spans with HTTP 5xx responses or exception events as errors. This lets New Relic display application traces beside the exact request and response captured by Speedscale.
+Applications send OTLP traces and metrics to the same collector service. The collector gives each RRPair a readable `<direction> <method> <path>` message, groups records by `service.name` before export, extracts W3C trace context from captured request headers, and marks spans with HTTP 5xx responses or exception events as errors. A span-metrics pipeline derives `http.server.duration` from server spans so New Relic can populate APM service views even when the application sends traces without compatible APM metrics.
 
 Verify export errors in the collector logs, then use New Relic **APM & Services** for services and distributed traces, **Logs** for `msgType = 'rrpair'`, and **Metrics and events** for application metrics. An account ID is not part of the ingest configuration and should not be stored in this chart.

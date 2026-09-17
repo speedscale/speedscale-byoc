@@ -59,12 +59,24 @@ spec:
     metadata:
       labels:
         app: otel-collector
+      annotations:
+        checksum/config: {{ toYaml .Values | sha256sum }}
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: otel-collector
           image: {{ .Values.image.otelCollector }}
           args:
             - "--config=/conf/otel.yaml"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 4317
               name: otlp-grpc

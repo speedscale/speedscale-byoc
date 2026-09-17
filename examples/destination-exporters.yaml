@@ -22,3 +22,15 @@ forwarder:
       otel_endpoint: http://byoc-newrelic-newrelic.byoc-newrelic.svc.cluster.local:4317
       filter_rule: standard
       dlp_config_id: standard
+    byoc_splunk:
+      otel_endpoint: http://byoc-splunk-collector.byoc-splunk.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+    byoc_kafka:
+      otel_endpoint: http://byoc-kafka-collector.byoc-kafka.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+    byoc_elastic_security:
+      otel_endpoint: http://byoc-elastic-otel-collector.byoc-elastic.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard

@@ -59,7 +59,7 @@
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 12 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [{
-        "expr": "{cluster=~\".+\"} | json | keep cluster, service, body_command, body_status, body_duration, body_location, body_direction | line_format \"{{.cluster}}/{{.service}}  {{.body_direction}}  {{.body_command}} {{.body_status}} {{ printf \\\"%4s\\\" .body_duration }}ms  {{.body_location}}\"",
+        "expr": "{cluster=~\".+\"} | json | keep cluster, service, command, status, duration, location, direction | line_format \"{{.cluster}}/{{.service}}  {{.direction}}  {{.command}} {{.status}} {{ printf \\\"%4s\\\" .duration }}ms  {{.location}}\"",
         "refId": "A"
       }]
     }

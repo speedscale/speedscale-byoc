@@ -1,0 +1,31 @@
+splunk:
+  endpoint: https://CHANGEME:8088/services/collector
+  tokenSecret: byoc-splunk
+  tokenKey: token
+  index: main
+  source: speedscale
+  sourceType: _json
+
+securityProfile:
+  includeFullPayload: false
+
+delivery:
+  queueSize: 1000
+  retryMaxElapsedTime: 300s
+
+networkPolicy:
+  enabled: true
+  allowedNamespaces:
+    - speedscale
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.160.0
+  digest: sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6

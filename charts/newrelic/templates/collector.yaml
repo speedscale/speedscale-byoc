@@ -35,17 +35,57 @@ data:
         log_statements:
           - context: log
             statements:
-              - set(resource.attributes["service.name"], log.body["service"]) where log.body["service"] != nil
+              - set(log.attributes["service.name"], log.body["service"]) where log.body["service"] != nil
+              - set(log.attributes["hostname"], log.body["service"]) where log.body["service"] != nil
               - set(log.attributes["speedscale.workload"], log.body["service"]) where log.body["service"] != nil
               - set(log.attributes["speedscale.direction"], log.body["direction"]) where log.body["direction"] != nil
+              - set(log.attributes["http.request.method"], log.body["http"]["req"]["method"]) where log.body["http"]["req"]["method"] != nil
+              - set(log.attributes["url.path"], log.body["http"]["req"]["uri"]) where log.body["http"]["req"]["uri"] != nil
+              - set(log.attributes["http.response.status_code"], log.body["http"]["res"]["statusCode"]) where log.body["http"]["res"]["statusCode"] != nil
               - set(log.cache["traceparent"], log.body["http"]["req"]["headers"]["Traceparent"][0]) where log.body["http"]["req"]["headers"]["Traceparent"] != nil
               - set(log.cache["traceparent"], log.body["http"]["req"]["headers"]["traceparent"][0]) where log.body["http"]["req"]["headers"]["traceparent"] != nil
               - set(log.cache["context"], ExtractPatterns(log.cache["traceparent"], "^00-(?P<trace>[0-9a-f]{32})-(?P<span>[0-9a-f]{16})-[0-9a-f]{2}$")) where log.cache["traceparent"] != nil
               - set(log.trace_id, TraceID(log.cache["context"]["trace"])) where log.cache["context"]["trace"] != nil
-              - set(log.span_id, SpanID(log.cache["context"]["span"])) where log.cache["context"]["span"] != nil
+              - set(log.span_id, SpanID(log.cache["context"]["span"])) where log.cache["context"]["span"] != nil and log.body["direction"] == "OUT"
+              - set(log.span_id, SpanID(0x0000000000000000)) where log.body["direction"] == "IN"
+              - set(log.body, Concat([log.body["direction"], log.body["http"]["req"]["method"], log.body["http"]["req"]["uri"]], " ")) where log.body["http"]["req"]["method"] != nil and log.body["http"]["req"]["uri"] != nil
+      groupbyattrs/service:
+        keys:
+          - service.name
       batch:
         timeout: 1s
         send_batch_size: 100
+        send_batch_max_size: 200
+      metricstransform/newrelic_apm:
+        transforms:
+          - include: traces.span.metrics.duration
+            action: update
+            new_name: http.server.duration
+      filter/newrelic_apm:
+        error_mode: propagate
+        metrics:
+          metric:
+            - name != "http.server.duration"
+          datapoint:
+            - attributes["span.kind"] != "SPAN_KIND_SERVER" and attributes["span.kind"] != "SERVER"
+            - attributes["http.method"] == nil
+            - attributes["http.route"] == nil
+    connectors:
+      span_metrics/newrelic:
+        histogram:
+          unit: ms
+        dimensions:
+          - name: http.method
+          - name: http.route
+          - name: http.status_code
+        exclude_dimensions:
+          - collector.instance.id
+        metrics_flush_interval: 10s
+        metrics_expiration: 5m
+        resource_metrics_key_attributes:
+          - service.name
+          - service.namespace
+          - deployment.environment.name
     exporters:
       otlphttp/newrelic:
         endpoint: {{ .Values.newrelic.endpoint | quote }}
@@ -53,10 +93,10 @@ data:
           api-key: ${env:NEW_RELIC_LICENSE_KEY}
         sending_queue:
           enabled: true
-          queue_size: 1000
+          queue_size: {{ .Values.delivery.queueSize }}
         retry_on_failure:
           enabled: true
-          max_elapsed_time: 300s
+          max_elapsed_time: {{ .Values.delivery.retryMaxElapsedTime }}
     extensions:
       health_check:
         endpoint: 0.0.0.0:13133
@@ -65,15 +105,19 @@ data:
       pipelines:
         logs:
           receivers: [otlp]
-          processors: [memory_limiter, transform/captures, batch]
+          processors: [memory_limiter, transform/captures, groupbyattrs/service, batch]
           exporters: [otlphttp/newrelic]
         traces:
           receivers: [otlp]
           processors: [memory_limiter, transform/errors, batch]
-          exporters: [otlphttp/newrelic]
+          exporters: [otlphttp/newrelic, span_metrics/newrelic]
         metrics:
           receivers: [otlp]
           processors: [memory_limiter, batch]
+          exporters: [otlphttp/newrelic]
+        metrics/newrelic_apm:
+          receivers: [span_metrics/newrelic]
+          processors: [metricstransform/newrelic_apm, filter/newrelic_apm, batch]
           exporters: [otlphttp/newrelic]
 ---
 apiVersion: apps/v1
@@ -90,10 +134,22 @@ spec:
       labels:
         app: {{ .Release.Name }}-newrelic
         app.kubernetes.io/version: {{ .Chart.Version | quote }}
+      annotations:
+        checksum/config: {{ toYaml .Values | sha256sum }}
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: collector
           image: {{ .Values.image }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           args: ["--config=/conf/otel.yaml"]
           env:
             - name: NEW_RELIC_LICENSE_KEY

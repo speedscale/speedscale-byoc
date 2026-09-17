@@ -49,6 +49,10 @@ jobs:
         run: |
           python3 tests/test_channel_boundaries.py
 
+      - name: Validate security and hardening contracts
+        run: |
+          python3 tests/test_security_contract.py
+
       - name: Validate collector configurations
         run: |
           python3 tests/validate_collectors.py

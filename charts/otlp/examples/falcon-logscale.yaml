@@ -1,0 +1,14 @@
+# Falcon LogScale OTLP/HTTP ingest. Create Secret `byoc-logscale` with key `token`.
+otlp:
+  endpoint: https://CHANGEME/api/v1/ingest/otel/v1/logs
+  headerName: Authorization
+  headerPrefix: "Bearer "
+  tokenSecret: byoc-logscale
+securityProfile:
+  enabled: true
+  includeFullPayload: false
+delivery:
+  retryMaxElapsedTime: 0s
+  persistence:
+    enabled: true
+    size: 2Gi

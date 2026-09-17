@@ -14,6 +14,14 @@ resources:
     memory: 256Mi
   limits:
     memory: 512Mi
+delivery:
+  queueSize: 1000
+  persistence:
+    size: 2Gi
+networkPolicy:
+  enabled: true
+  allowedNamespaces:
+    - speedscale
 reader:
   enabled: false
   image: ""

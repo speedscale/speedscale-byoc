@@ -1,0 +1,13 @@
+apiVersion: v2
+name: splunk
+description: Dedicated Speedscale BYOC security channel for Splunk HEC.
+type: application
+version: 1.0.0
+appVersion: "0.160.0"
+keywords: [speedscale, byoc, splunk, security, opentelemetry]
+home: https://github.com/speedscale/speedscale-byoc
+maintainers:
+  - name: Speedscale
+    email: support@speedscale.com
+sources:
+  - https://github.com/speedscale/speedscale-byoc/tree/main/charts/splunk

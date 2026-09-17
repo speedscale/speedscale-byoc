@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["splunk", "securityProfile", "delivery", "networkPolicy", "resources", "image"],
+  "properties": {
+    "splunk": {"type": "object", "required": ["endpoint", "tokenSecret", "tokenKey", "index", "source", "sourceType"], "properties": {"endpoint": {"type": "string", "minLength": 1}, "tokenSecret": {"type": "string", "minLength": 1}, "tokenKey": {"type": "string", "minLength": 1}, "index": {"type": "string", "minLength": 1}, "source": {"type": "string", "minLength": 1}, "sourceType": {"type": "string", "minLength": 1}}},
+    "securityProfile": {"type": "object", "required": ["includeFullPayload"], "properties": {"includeFullPayload": {"type": "boolean"}}},
+    "delivery": {"type": "object", "required": ["queueSize", "retryMaxElapsedTime"], "properties": {"queueSize": {"type": "integer", "minimum": 1}, "retryMaxElapsedTime": {"type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$"}}},
+    "networkPolicy": {"type": "object", "required": ["enabled", "allowedNamespaces"], "properties": {"enabled": {"type": "boolean"}, "allowedNamespaces": {"type": "array", "items": {"type": "string", "minLength": 1}}}},
+    "resources": {"type": "object"},
+    "image": {"type": "object", "required": ["repository", "tag", "digest"], "properties": {"repository": {"type": "string"}, "tag": {"type": "string"}, "digest": {"type": "string"}}}
+  }
+}

@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.0] - 2026-09-17
+
+- Upgrade to Loki 3.5 with TSDB v13 and native OTLP ingestion.
+- Update dashboards and the replay gatherer for native OTLP log lines.
+- Add collector rollout checksums, pod hardening, and restricted OTLP ingress.
+
+This is a breaking storage-schema change. Drain or migrate existing Loki data before upgrading.
+
 ## [Unreleased]
 
 ### Added

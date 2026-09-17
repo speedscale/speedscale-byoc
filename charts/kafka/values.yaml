@@ -1,0 +1,33 @@
+kafka:
+  brokers:
+    - kafka.kafka.svc.cluster.local:9092
+  topic: speedscale-otel-logs
+  encoding: otlp_json
+  tls:
+    enabled: false
+    insecureSkipVerify: false
+    caSecret: ""
+    caKey: ca.crt
+
+securityProfile:
+  includeFullPayload: false
+
+delivery:
+  queueSize: 1000
+  persistence:
+    enabled: true
+    size: 2Gi
+
+networkPolicy:
+  enabled: true
+  allowedNamespaces:
+    - speedscale
+
+resources:
+  requests: {cpu: 100m, memory: 256Mi}
+  limits: {memory: 512Mi}
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.160.0
+  digest: sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6

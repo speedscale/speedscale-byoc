@@ -55,10 +55,10 @@ data:
           key: ${env:DD_API_KEY}
         sending_queue:
           enabled: true
-          queue_size: 1000
+          queue_size: {{ .Values.delivery.queueSize }}
         retry_on_failure:
           enabled: true
-          max_elapsed_time: 300s
+          max_elapsed_time: {{ .Values.delivery.retryMaxElapsedTime }}
     extensions:
       health_check:
         endpoint: 0.0.0.0:13133
@@ -92,10 +92,22 @@ spec:
       labels:
         app: {{ .Release.Name }}-datadog
         app.kubernetes.io/version: {{ .Chart.Version | quote }}
+      annotations:
+        checksum/config: {{ toYaml .Values | sha256sum }}
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: collector
           image: {{ .Values.image }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           args: ["--config=/conf/otel.yaml"]
           env:
             - name: DD_API_KEY

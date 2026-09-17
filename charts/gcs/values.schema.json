@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "additionalProperties": false,
-  "required": ["gcs", "serviceAccount", "resources", "reader", "image"],
+  "required": ["gcs", "serviceAccount", "resources", "delivery", "networkPolicy", "reader", "image"],
   "properties": {
     "image": {"type": "string", "minLength": 1},
     "gcs": {
@@ -38,6 +38,29 @@
       }
     },
     "resources": {"type": "object"},
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["queueSize", "persistence"],
+      "properties": {
+        "queueSize": {"type": "integer", "minimum": 1},
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["size"],
+          "properties": {"size": {"type": "string", "pattern": "^[0-9]+(Ki|Mi|Gi|Ti)$"}}
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "allowedNamespaces"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "allowedNamespaces": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
     "reader": {
       "type": "object",
       "additionalProperties": false,

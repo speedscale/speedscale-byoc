@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.1] - 2026-09-17
+
+- Add collector rollout checksums, pod hardening, and restricted OTLP ingress to the local-demo stack.
+
 ## [1.0.0] - 2026-05-28
 
 First public release on Artifact Hub.
