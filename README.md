@@ -4,7 +4,7 @@ Reference Helm charts for sending captured Speedscale traffic to storage and obs
 
 ## Destination channels
 
-Every destination has one Forwarder exporter, one collector, one credential boundary, and one backend. The four primary channels are independent:
+Every destination has one Forwarder exporter, one collector, one credential boundary, and one backend. The five primary channels are independent:
 
 | Channel | Chart | Collector destination |
 |---|---|---|
@@ -12,6 +12,7 @@ Every destination has one Forwarder exporter, one collector, one credential boun
 | GCS | [`charts/gcs/`](charts/gcs/) | Native OTel `google_cloud_storage` exporter to one GCS bucket |
 | Datadog | [`charts/datadog/`](charts/datadog/) | Datadog exporter for logs, traces, and metrics |
 | Dynatrace | [`charts/dynatrace/`](charts/dynatrace/) | OTLP/HTTP exporter for logs, traces, and metrics |
+| New Relic | [`charts/newrelic/`](charts/newrelic/) | OTLP/HTTP exporter for logs, traces, and metrics |
 
 Additional charts remain independent destinations:
 
@@ -26,6 +27,8 @@ Additional charts remain independent destinations:
 ## Wiring
 
 Install the Speedscale Operator separately. Add one named Forwarder exporter for every enabled destination:
+
+The [`examples/destination-exporters.yaml`](examples/destination-exporters.yaml) template contains the five primary options in one values file. Keep an entry to enable that destination and remove it to disable the channel.
 
 ```yaml
 forwarder:
@@ -44,6 +47,10 @@ forwarder:
       dlp_config_id: standard
     byoc_dynatrace:
       otel_endpoint: http://byoc-dynatrace-dynatrace.byoc-dynatrace.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+    byoc_newrelic:
+      otel_endpoint: http://byoc-newrelic-newrelic.byoc-newrelic.svc.cluster.local:4317
       filter_rule: standard
       dlp_config_id: standard
 ```
@@ -96,7 +103,7 @@ python3 tests/test_channel_boundaries.py
 python3 -m unittest discover -s recipes/datadog-to-replay -p 'test_*.py' -v
 ```
 
-The boundary test renders the four primary charts and verifies each collector contains only its declared destination exporter.
+The boundary test renders the five primary charts and verifies each collector contains only its declared destination exporter.
 
 ## License
 

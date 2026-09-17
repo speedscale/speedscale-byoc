@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.0] - 2026-09-17
+
+- Reserve New Relic for its dedicated logs, traces, and metrics chart.
+
 ## [1.1.0] - 2026-09-16
 
 - Reserve Datadog and Dynatrace for their dedicated charts.

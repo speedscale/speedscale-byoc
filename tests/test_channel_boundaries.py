@@ -11,6 +11,7 @@ EXPECTED = {
     "gcs": {"google_cloud_storage"},
     "datadog": {"datadog"},
     "dynatrace": {"otlphttp/dynatrace"},
+    "newrelic": {"otlphttp/newrelic"},
 }
 
 
@@ -46,7 +47,7 @@ def main():
         if token in datadog_recipe:
             raise AssertionError(f"Datadog recipe still depends on GCS: {token}")
 
-    print("validated independent S3, GCS, Datadog, and Dynatrace channels")
+    print("validated independent S3, GCS, Datadog, Dynatrace, and New Relic channels")
 
 
 if __name__ == "__main__":

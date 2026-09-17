@@ -18,12 +18,47 @@ data:
         check_interval: 1s
         limit_mib: 400
         spike_limit_mib: 80
-      batch: {}
+      transform/errors:
+        error_mode: ignore
+        trace_statements:
+          - context: span
+            statements:
+              - set(span.status.code, STATUS_CODE_ERROR) where span.attributes["http.status_code"] != nil and span.attributes["http.status_code"] >= 500
+              - set(span.status.code, STATUS_CODE_ERROR) where span.attributes["http.response.status_code"] != nil and span.attributes["http.response.status_code"] >= 500
+          - context: spanevent
+            statements:
+              - set(span.status.code, STATUS_CODE_ERROR) where spanevent.name == "exception"
+              - set(span.attributes["error.type"], spanevent.attributes["exception.type"]) where spanevent.name == "exception" and spanevent.attributes["exception.type"] != nil
+              - set(span.attributes["error.message"], spanevent.attributes["exception.message"]) where spanevent.name == "exception" and spanevent.attributes["exception.message"] != nil
+      transform/captures:
+        error_mode: ignore
+        log_statements:
+          - context: log
+            statements:
+              - set(resource.attributes["service.name"], log.body["service"]) where log.body["service"] != nil
+              - set(log.attributes["speedscale.workload"], log.body["service"]) where log.body["service"] != nil
+              - set(log.attributes["speedscale.direction"], log.body["direction"]) where log.body["direction"] != nil
+              - set(log.cache["traceparent"], log.body["http"]["req"]["headers"]["Traceparent"][0]) where log.body["http"]["req"]["headers"]["Traceparent"] != nil
+              - set(log.cache["traceparent"], log.body["http"]["req"]["headers"]["traceparent"][0]) where log.body["http"]["req"]["headers"]["traceparent"] != nil
+              - set(log.cache["context"], ExtractPatterns(log.cache["traceparent"], "^00-(?P<trace>[0-9a-f]{32})-(?P<span>[0-9a-f]{16})-[0-9a-f]{2}$")) where log.cache["traceparent"] != nil
+              - set(log.trace_id, TraceID(log.cache["context"]["trace"])) where log.cache["context"]["trace"] != nil
+              - set(log.span_id, SpanID(log.cache["context"]["span"])) where log.cache["context"]["span"] != nil
+      batch:
+        timeout: 1s
+        send_batch_size: 100
+    connectors:
+      datadog/connector: {}
     exporters:
       datadog:
         api:
           site: {{ .Values.datadog.site | quote }}
           key: ${env:DD_API_KEY}
+        sending_queue:
+          enabled: true
+          queue_size: 1000
+        retry_on_failure:
+          enabled: true
+          max_elapsed_time: 300s
     extensions:
       health_check:
         endpoint: 0.0.0.0:13133
@@ -32,14 +67,14 @@ data:
       pipelines:
         logs:
           receivers: [otlp]
-          processors: [memory_limiter, batch]
+          processors: [memory_limiter, transform/captures, batch]
           exporters: [datadog]
         traces:
           receivers: [otlp]
-          processors: [memory_limiter, batch]
-          exporters: [datadog]
+          processors: [memory_limiter, transform/errors, batch]
+          exporters: [datadog, datadog/connector]
         metrics:
-          receivers: [otlp]
+          receivers: [otlp, datadog/connector]
           processors: [memory_limiter, batch]
           exporters: [datadog]
 ---

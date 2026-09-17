@@ -25,7 +25,7 @@ forwarder:
       dlp_config_id: standard
 ```
 
-The Forwarder sends captured RRPairs through the logs pipeline. Applications can send their OTLP traces and metrics to the same Datadog collector service when the demo needs APM and infrastructure correlation. The three signals share one Datadog destination and API key; they do not share a collector with any other backend.
+The Forwarder sends captured RRPairs through the logs pipeline. Applications can send their OTLP traces and metrics to the same Datadog collector service. The collector extracts W3C trace context from captured request headers, copies the RRPair workload into `service.name`, maps HTTP 5xx responses and exception events to span errors, and generates the trace metrics used by Datadog APM service views. The three signals share one Datadog destination and API key; they do not share a collector with any other backend.
 
 Verify collector export errors first, then query the selected Datadog organization for recent logs with `@msgType:rrpair`, APM traces by `service`, and metrics by their instrument names. Confirm the organization before enabling traffic.
 

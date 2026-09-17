@@ -1,0 +1,24 @@
+# Speedscale Operator values for independent BYOC destinations.
+# Keep only the destinations that should receive captured RRPairs.
+forwarder:
+  exporters:
+    byoc_s3:
+      otel_endpoint: http://otel-collector.byoc-s3.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+    byoc_gcs:
+      otel_endpoint: http://byoc-gcs-gcs.byoc-gcs.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+    byoc_datadog:
+      otel_endpoint: http://byoc-datadog-datadog.byoc-datadog.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+    byoc_dynatrace:
+      otel_endpoint: http://byoc-dynatrace-dynatrace.byoc-dynatrace.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard
+    byoc_newrelic:
+      otel_endpoint: http://byoc-newrelic-newrelic.byoc-newrelic.svc.cluster.local:4317
+      filter_rule: standard
+      dlp_config_id: standard

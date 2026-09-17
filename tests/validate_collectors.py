@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ENV = {
     "datadog": ["-e", "DD_API_KEY=" + "0" * 32],
     "dynatrace": ["-e", "DT_API_TOKEN=dt0c01.validation"],
+    "newrelic": ["-e", "NEW_RELIC_LICENSE_KEY=validation"],
     "gcs": [],
 }
 
