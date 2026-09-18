@@ -72,6 +72,25 @@ entries:
   datadog:
   - apiVersion: v2
     appVersion: 0.160.0
+    created: "2026-09-18T11:32:33.864531361Z"
+    description: Dedicated Speedscale BYOC channel for Datadog logs, traces, and metrics.
+    digest: f163f6050cd8c24b85211326fb30e7079f085d7fba2e449c6136cf1a665ff695
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - datadog
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: datadog
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/datadog-1.3.0/datadog-1.3.0.tgz
+    version: 1.3.0
+  - apiVersion: v2
+    appVersion: 0.160.0
     created: "2026-09-17T23:23:54.090143669Z"
     description: Dedicated Speedscale BYOC channel for Datadog logs, traces, and metrics.
     digest: d476c68cdab34d12638363f60477cb35832c2acf11ba0887e8a6f6298daea8bb
@@ -128,6 +147,26 @@ entries:
     - https://github.com/speedscale/speedscale-byoc/releases/download/datadog-1.0.0/datadog-1.0.0.tgz
     version: 1.0.0
   dynatrace:
+  - apiVersion: v2
+    appVersion: 0.160.0
+    created: "2026-09-18T11:32:34.018278224Z"
+    description: Dedicated Speedscale BYOC channel for Dynatrace logs, traces, and
+      metrics.
+    digest: 4f2eb1bc44aea77bc4f6497149e7ce3605fa8a0ef4472e88cc0e592f8cbd5ec7
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - dynatrace
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: dynatrace
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/dynatrace-1.3.0/dynatrace-1.3.0.tgz
+    version: 1.3.0
   - apiVersion: v2
     appVersion: 0.160.0
     created: "2026-09-17T23:23:54.270262858Z"
@@ -589,6 +628,26 @@ entries:
   newrelic:
   - apiVersion: v2
     appVersion: 0.160.0
+    created: "2026-09-18T11:32:34.300059868Z"
+    description: Dedicated Speedscale BYOC channel for New Relic logs, traces, and
+      metrics.
+    digest: 777975a80070e231bc9834e21492f59c809aee46df4467e379a9e0d09bd621d1
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - newrelic
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: newrelic
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/newrelic-1.3.0/newrelic-1.3.0.tgz
+    version: 1.3.0
+  - apiVersion: v2
+    appVersion: 0.160.0
     created: "2026-09-17T23:23:55.615246943Z"
     description: Dedicated Speedscale BYOC channel for New Relic logs, traces, and
       metrics.
@@ -774,4 +833,4 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/splunk-1.0.0/splunk-1.0.0.tgz
     version: 1.0.0
-generated: "2026-09-17T23:23:55.963629922Z"
+generated: "2026-09-18T11:32:34.300095761Z"
