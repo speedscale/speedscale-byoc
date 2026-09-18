@@ -1,0 +1,27 @@
+{
+  "resourceLogs": [{
+    "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "forwarder"}}]},
+    "scopeLogs": [{
+      "scope": {"name": "speedscale-forwarder"},
+      "logRecords": [{
+        "timeUnixNano": "TIME_UNIX_NANO",
+        "severityText": "INFO",
+        "body": {"kvlistValue": {"values": [
+          {"key": "service", "value": {"stringValue": "checkout-api"}},
+          {"key": "msgType", "value": {"stringValue": "rrpair"}},
+          {"key": "direction", "value": {"stringValue": "IN"}},
+          {"key": "uuid", "value": {"stringValue": "security-demo-auth-failure"}},
+          {"key": "dlpModified", "value": {"boolValue": true}},
+          {"key": "l7protocol", "value": {"stringValue": "http"}},
+          {"key": "command", "value": {"stringValue": "POST"}},
+          {"key": "status", "value": {"stringValue": "401"}},
+          {"key": "location", "value": {"stringValue": "/api/login"}},
+          {"key": "source", "value": {"stringValue": "203.0.113.42"}},
+          {"key": "destination", "value": {"stringValue": "checkout-api:8080"}},
+          {"key": "requestBody", "value": {"stringValue": "must-not-leave-collector password=hunter2"}},
+          {"key": "responseBody", "value": {"stringValue": "invalid password"}}
+        ]}}
+      }]
+    }]
+  }]
+}

@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "charts/**"
+      - "examples/security/**"
       - "recipes/datadog-to-replay/**"
       - "tests/**"
       - ".github/workflows/lint.yml"

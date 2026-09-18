@@ -1,0 +1,50 @@
+speedscale-security:
+  source:
+    otlp:
+      ssl: false
+      port: 21893
+      unframed_requests: true
+      logs_path: /v1/logs
+      logs_output_format: opensearch
+  processor:
+    - parse_json:
+        source: body
+        delete_source: true
+    - rename_keys:
+        entries:
+          - {from_key: event@kind, to_key: event/kind}
+          - {from_key: event@category, to_key: event/category}
+          - {from_key: event@type, to_key: event/type}
+          - {from_key: speedscale@message_type, to_key: speedscale/message_type}
+          - {from_key: speedscale@traffic_id, to_key: speedscale/traffic_id}
+          - {from_key: speedscale@dlp_modified, to_key: speedscale/dlp_modified}
+          - {from_key: k8s@workload@name, to_key: k8s/workload/name}
+          - {from_key: network@direction, to_key: network/direction}
+          - {from_key: network@protocol@name, to_key: network/protocol/name}
+          - {from_key: http@request@method, to_key: http/request/method}
+          - {from_key: http@response@status_code, to_key: http/response/status_code}
+          - {from_key: url@path, to_key: url/path}
+          - {from_key: client@address, to_key: client/address}
+          - {from_key: server@address, to_key: server/address}
+    - select_entries:
+        include_keys:
+          - time
+          - traceId
+          - spanId
+          - serviceName
+          - event
+          - speedscale
+          - k8s
+          - network
+          - http
+          - url
+          - client
+          - server
+  sink:
+    - opensearch:
+        hosts: ["https://opensearch:9200"]
+        insecure: true
+        username: admin
+        password: Speedscale-OpenSearch-Demo-2026!
+        index: speedscale-security-%{yyyy-MM-dd}
+        index_type: custom

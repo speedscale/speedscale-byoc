@@ -31,4 +31,4 @@ forwarder:
 
 The Secret is created outside the chart. Check collector logs for authentication, endpoint, payload-size, and rate-limit errors. This generic chart accepts one destination per release.
 
-For security tools, enable `securityProfile.enabled`. It maps RRPair fields to common event, HTTP, network, workload, DLP, and trace-correlation attributes. Its default `includeFullPayload: false` replaces the captured body with normalized metadata. Examples for Elastic Security, Falcon LogScale, and OpenSearch Security Analytics are in [`examples/`](examples/).
+For security tools, enable `securityProfile.enabled`. It maps RRPair fields to common event, HTTP, network, workload, DLP, and trace-correlation attributes. Its default `includeFullPayload: false` replaces the captured body with normalized metadata. Examples for Elastic Security, Falcon LogScale, and OpenSearch Security Analytics are in [`examples/`](examples/). The OpenSearch preset has a runnable local Security Analytics demo in [`examples/security/opensearch/`](../../examples/security/opensearch/).
