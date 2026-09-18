@@ -31,18 +31,35 @@ data:
               - set(span.attributes["error.type"], spanevent.attributes["exception.type"]) where spanevent.name == "exception" and spanevent.attributes["exception.type"] != nil
               - set(span.attributes["error.message"], spanevent.attributes["exception.message"]) where spanevent.name == "exception" and spanevent.attributes["exception.message"] != nil
       transform/captures:
-        error_mode: ignore
+        error_mode: propagate
         log_statements:
           - context: log
             statements:
-              - set(resource.attributes["service.name"], log.body["service"]) where log.body["service"] != nil
+              - set(log.attributes["service.name"], log.body["service"]) where log.body["service"] != nil
+              - set(log.attributes["hostname"], log.body["netinfo"]["upstream"]["hostname"]) where log.body["netinfo"] != nil and log.body["netinfo"]["upstream"] != nil and log.body["netinfo"]["upstream"]["hostname"] != nil
+              - set(log.attributes["server.address"], log.body["netinfo"]["upstream"]["hostname"]) where log.body["netinfo"] != nil and log.body["netinfo"]["upstream"] != nil and log.body["netinfo"]["upstream"]["hostname"] != nil
+              - set(log.attributes["network.peer.address"], log.body["netinfo"]["upstream"]["hostname"]) where log.body["netinfo"] != nil and log.body["netinfo"]["upstream"] != nil and log.body["netinfo"]["upstream"]["hostname"] != nil
+              - set(log.attributes["msgType"], log.body["msgType"]) where log.body["msgType"] != nil
               - set(log.attributes["speedscale.workload"], log.body["service"]) where log.body["service"] != nil
               - set(log.attributes["speedscale.direction"], log.body["direction"]) where log.body["direction"] != nil
-              - set(log.cache["traceparent"], log.body["http"]["req"]["headers"]["Traceparent"][0]) where log.body["http"]["req"]["headers"]["Traceparent"] != nil
-              - set(log.cache["traceparent"], log.body["http"]["req"]["headers"]["traceparent"][0]) where log.body["http"]["req"]["headers"]["traceparent"] != nil
+              - set(log.attributes["speedscale.protocol"], log.body["l7protocol"]) where log.body["l7protocol"] != nil
+              - set(log.attributes["speedscale.command"], log.body["command"]) where log.body["command"] != nil
+              - set(log.attributes["speedscale.status"], log.body["status"]) where log.body["status"] != nil
+              - set(log.attributes["http.request.method"], log.body["http"]["req"]["method"]) where log.body["http"] != nil and log.body["http"]["req"] != nil and log.body["http"]["req"]["method"] != nil
+              - set(log.attributes["url.path"], log.body["http"]["req"]["uri"]) where log.body["http"] != nil and log.body["http"]["req"] != nil and log.body["http"]["req"]["uri"] != nil
+              - set(log.attributes["http.response.status_code"], log.body["http"]["res"]["statusCode"]) where log.body["http"] != nil and log.body["http"]["res"] != nil and log.body["http"]["res"]["statusCode"] != nil
+              - set(log.cache["traceparent"], log.body["http"]["req"]["headers"]["Traceparent"][0]) where log.body["http"] != nil and log.body["http"]["req"] != nil and log.body["http"]["req"]["headers"] != nil and log.body["http"]["req"]["headers"]["Traceparent"] != nil
+              - set(log.cache["traceparent"], log.body["http"]["req"]["headers"]["traceparent"][0]) where log.body["http"] != nil and log.body["http"]["req"] != nil and log.body["http"]["req"]["headers"] != nil and log.body["http"]["req"]["headers"]["traceparent"] != nil
               - set(log.cache["context"], ExtractPatterns(log.cache["traceparent"], "^00-(?P<trace>[0-9a-f]{32})-(?P<span>[0-9a-f]{16})-[0-9a-f]{2}$")) where log.cache["traceparent"] != nil
               - set(log.trace_id, TraceID(log.cache["context"]["trace"])) where log.cache["context"]["trace"] != nil
               - set(log.span_id, SpanID(log.cache["context"]["span"])) where log.cache["context"]["span"] != nil
+              - set(log.cache["summary"], Concat([log.body["direction"], log.body["l7protocol"]], " "))
+              - set(log.cache["summary"], Concat([log.body["direction"], log.body["l7protocol"], log.body["command"]], " ")) where log.body["command"] != nil
+              - set(log.cache["summary"], Concat([log.attributes["speedscale.direction"], log.attributes["http.request.method"], log.attributes["url.path"]], " ")) where log.attributes["http.request.method"] != nil and log.attributes["url.path"] != nil
+              - set(log.body, log.cache["summary"])
+      groupbyattrs/service:
+        keys:
+          - service.name
       cumulativetodelta:
         max_staleness: 25h
       batch:
@@ -68,7 +85,7 @@ data:
       pipelines:
         logs:
           receivers: [otlp]
-          processors: [memory_limiter, transform/captures, batch]
+          processors: [memory_limiter, transform/captures, groupbyattrs/service, batch]
           exporters: [otlphttp/dynatrace]
         traces:
           receivers: [otlp]
