@@ -1,0 +1,25 @@
+title: Speedscale Authentication Failure
+id: 5fe1ca3a-ec51-49cb-8f49-651d75ee8d9a
+status: experimental
+description: Detects captured HTTP authentication requests rejected with 401 or 403.
+author: Speedscale
+date: 2026/09/18
+tags:
+  - attack.credential_access
+  - attack.t1110
+logsource:
+  category: network
+detection:
+  authentication_endpoint:
+    url.path|contains:
+      - /login
+      - /signin
+      - /token
+  rejected:
+    http.response.status_code:
+      - 401
+      - 403
+  condition: authentication_endpoint and rejected
+falsepositives:
+  - Users entering an incorrect password
+level: medium

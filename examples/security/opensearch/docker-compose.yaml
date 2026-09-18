@@ -1,0 +1,54 @@
+services:
+  opensearch:
+    image: opensearchproject/opensearch:3.6.0
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: Speedscale-OpenSearch-Demo-2026!
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 127.0.0.1:9200:9200
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail --insecure --user admin:$${OPENSEARCH_INITIAL_ADMIN_PASSWORD} https://localhost:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:3.6.0
+    environment:
+      OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
+    ports:
+      - 127.0.0.1:5601:5601
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  data-prepper:
+    image: opensearchproject/data-prepper:2.16.0
+    volumes:
+      - ./data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml:ro
+      - ./pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml:ro
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  collector:
+    image: otel/opentelemetry-collector-contrib:0.160.0@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6
+    command: ["--config=/conf/collector.yaml"]
+    volumes:
+      - ./collector.yaml:/conf/collector.yaml:ro
+    ports:
+      - 127.0.0.1:4318:4318
+    depends_on:
+      - data-prepper
+
+volumes:
+  opensearch-data:

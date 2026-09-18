@@ -1,10 +1,12 @@
-# OpenSearch Data Prepper OTLP/HTTP source. The matching pipeline is documented
-# in examples/security/opensearch-data-prepper.yaml.
+# OpenSearch Data Prepper OTLP/HTTP source. A runnable local stack and matching
+# pipeline are in examples/security/opensearch/.
+# The Secret's token key contains base64(username:password) for Data Prepper's
+# HTTP basic authentication.
 otlp:
   endpoint: https://data-prepper.example.com:21893/v1/logs
   headerName: Authorization
-  headerPrefix: "Bearer "
-  tokenSecret: byoc-opensearch
+  headerPrefix: "Basic "
+  tokenSecret: byoc-opensearch-basic-auth
 securityProfile:
   enabled: true
   includeFullPayload: false

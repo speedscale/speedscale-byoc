@@ -26,6 +26,8 @@ Additional charts remain independent destinations:
 | [`charts/kafka/`](charts/kafka/) | Durable Kafka bridge for security and data pipelines |
 | [`charts/otlp/`](charts/otlp/) | One generic OTLP backend, including Elastic, LogScale, and OpenSearch security presets |
 
+The [`examples/security/opensearch/`](examples/security/opensearch/) demo runs an OSS security path end to end: OTLP ingestion, metadata-only normalization, Data Prepper, OpenSearch Security Analytics, and a Sigma authentication-failure detector.
+
 ## Wiring
 
 Install the Speedscale Operator separately. Add one named Forwarder exporter for every enabled destination:

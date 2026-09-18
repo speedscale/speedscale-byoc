@@ -1,0 +1,50 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  transform/security:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(resource.attributes["service.name"], log.body["service"]) where log.body["service"] != nil
+          - set(log.attributes["event.kind"], "event")
+          - set(log.attributes["event.category"], "network")
+          - set(log.attributes["event.type"], "access")
+          - set(log.attributes["speedscale.message_type"], log.body["msgType"]) where log.body["msgType"] != nil
+          - set(log.attributes["k8s.workload.name"], log.body["service"]) where log.body["service"] != nil
+          - set(log.attributes["network.direction"], log.body["direction"]) where log.body["direction"] != nil
+          - set(log.attributes["speedscale.traffic_id"], log.body["uuid"]) where log.body["uuid"] != nil
+          - set(log.attributes["speedscale.dlp_modified"], log.body["dlpModified"]) where log.body["dlpModified"] != nil
+          - set(log.attributes["network.protocol.name"], log.body["l7protocol"]) where log.body["l7protocol"] != nil
+          - set(log.attributes["http.request.method"], log.body["command"]) where log.body["command"] != nil and log.body["l7protocol"] == "http"
+          - set(log.attributes["http.response.status_code"], Int(log.body["status"])) where log.body["status"] != nil and log.body["l7protocol"] == "http"
+          - set(log.attributes["url.path"], log.body["location"]) where log.body["location"] != nil and log.body["l7protocol"] == "http"
+          - set(log.attributes["client.address"], log.body["source"]) where log.body["source"] != nil
+          - set(log.attributes["server.address"], log.body["destination"]) where log.body["destination"] != nil
+          - set(log.body, log.attributes)
+  batch:
+    timeout: 1s
+
+exporters:
+  otlphttp/data-prepper:
+    logs_endpoint: http://data-prepper:21893/v1/logs
+    compression: none
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0s
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [transform/security, batch]
+      exporters: [otlphttp/data-prepper]
