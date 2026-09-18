@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.0] - 2026-09-18
+
+- Add readable RRPair summaries and explicit source, destination, protocol, command, and status attributes.
+- Isolate service attribution when one OTLP batch contains multiple workloads.
+
 ## [1.2.0] - 2026-09-17
 
 - Add configurable sending queues and retries, rollout checksums, pod hardening, and restricted OTLP ingress.

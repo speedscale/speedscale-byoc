@@ -57,6 +57,10 @@ jobs:
         run: |
           python3 tests/validate_collectors.py
 
+      - name: Exercise partner capture transforms
+        run: |
+          python3 tests/test_capture_transforms.py
+
       - name: Validate native GCS collector and reader
         run: |
           python3 charts/gcs/validate-config.py

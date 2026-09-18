@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.0] - 2026-09-18
+
+- Use the upstream hostname for RRPair destinations while retaining source service attribution.
+- Add readable summaries and protocol, command, and status attributes for HTTP, PostgreSQL, and Kafka captures.
+
 ## [1.2.0] - 2026-09-17
 
 - Populate readable RRPair log messages and HTTP attributes.
