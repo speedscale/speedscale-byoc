@@ -1,3 +1,6 @@
+# DEPRECATED: Do not use this chart for new installations. Use speedscale-byoc/gcs.
+# This chart remains available only for migration from the GCS S3-compatible XML API and HMAC path.
+
 # BYOC OTel Collector → GCS chart values.
 #
 # This chart installs ONLY the in-cluster shipping pipeline (OTel Collector
