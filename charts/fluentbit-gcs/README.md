@@ -1,4 +1,18 @@
-# Speedscale BYOC — Fluent Bit → GCS data-lake
+# Deprecated: legacy GCS compatibility chart
+
+> **Do not use this chart for new installations.** Use [`speedscale-byoc/gcs`](../gcs/) instead. The `gcs` chart uses the native OpenTelemetry `google_cloud_storage` exporter, Workload Identity, and the current pinned Collector image. This legacy chart remains available only so existing S3-compatible XML API and HMAC deployments can migrate without losing access to their stored objects.
+
+See [Migration to `gcs`](#migration-to-gcs) before changing an existing deployment.
+
+## Migration to `gcs`
+
+The replacement is not an in-place chart upgrade because the authentication model, exporter, service name, and object format differ. Install `speedscale-byoc/gcs` under a separate release, configure Workload Identity, validate new objects in a separate prefix, and then change only `forwarder.exporters.byoc_gcs.otel_endpoint`. Existing objects remain readable through the legacy GCS S3-compatible import path.
+
+Follow the current [`gcs` chart instructions](../gcs/README.md#migration-from-fluentbit-gcs) for the complete migration sequence.
+
+## Legacy architecture
+
+The remaining sections document existing legacy deployments only. Do not use their installation commands for a new deployment.
 
 Speedscale captures inbound + outbound traffic in the cluster and ships
 RRPair logs through an OpenTelemetry Collector → Fluent Bit shipper → a

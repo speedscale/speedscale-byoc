@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.2] - 2026-09-21
+
+- Mark the chart deprecated in Helm metadata and direct new installations to the native `gcs` chart.
+- Add migration guidance for existing S3-compatible XML API and HMAC deployments.
+
 ## [2.0.1] - 2026-09-17
 
 - Add collector rollout checksums, pod hardening, and restricted OTLP ingress to the legacy GCS path.

@@ -21,7 +21,7 @@ Additional charts remain independent destinations:
 | [`charts/grafana/`](charts/grafana/) | Local-demo Loki and Prometheus stack with Grafana |
 | [`charts/elasticsearch/`](charts/elasticsearch/) | Local-demo Elasticsearch and Kibana stack |
 | [`charts/azureblob/`](charts/azureblob/) | Azure Blob Storage |
-| [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | Legacy GCS path using the S3-compatible API and HMAC |
+| [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | **Deprecated.** Legacy GCS path using the S3-compatible API and HMAC. Use `gcs` for new installations. |
 | [`charts/splunk/`](charts/splunk/) | Splunk HEC security channel with metadata-only defaults |
 | [`charts/kafka/`](charts/kafka/) | Durable Kafka bridge for security and data pipelines |
 | [`charts/otlp/`](charts/otlp/) | One generic OTLP backend, including Elastic, LogScale, and OpenSearch security presets |
