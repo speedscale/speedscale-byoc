@@ -8,7 +8,7 @@ description: |
   No Fluent Bit required. Pairs with the Speedscale Operator chart (installed separately
   into the `speedscale` namespace).
 type: application
-version: 2.2.0
+version: 2.2.1
 appVersion: "2.1.0"
 keywords:
   - speedscale

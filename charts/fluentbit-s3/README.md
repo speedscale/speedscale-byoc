@@ -11,7 +11,7 @@ Use this scenario when you want a durable object-storage archive on AWS —
 for compliance retention, Athena/Glue queries, downstream ML pipelines,
 or proxymock replay — without a live query backend.
 
-> **GCS instead of S3?** See [`charts/fluentbit-gcs/`](../fluentbit-gcs/) — same architecture, different destination and auth model.
+> **GCS instead of S3?** Use the native [`gcs` chart](../gcs/). The `fluentbit-gcs` chart is deprecated.
 
 ## Architecture
 

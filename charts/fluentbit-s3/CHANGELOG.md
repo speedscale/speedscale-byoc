@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.2.1] - 2026-09-21
+
+- Direct GCS users to the native `gcs` chart instead of the deprecated `fluentbit-gcs` chart.
+
 ## [2.2.0] - 2026-09-17
 
 - Upgrade the collector to digest-pinned 0.160.0.
