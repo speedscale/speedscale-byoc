@@ -289,6 +289,37 @@ entries:
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
     appVersion: 2.0.0
+    created: "2026-09-21T11:51:12.90785881Z"
+    deprecated: true
+    description: Deprecated GCS compatibility path using the awss3 exporter and HMAC
+      credentials. Use the gcs chart for new installations.
+    digest: 2cdcd0d8595c03e56d100dfdf139a31b895eec9a2f07934194e287b74c69f353
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - gcs
+    - google-cloud-storage
+    - opentelemetry
+    - awss3
+    - archive
+    - data-lake
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: fluentbit-gcs
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/fluentbit-gcs
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/fluentbit-gcs-2.0.2/fluentbit-gcs-2.0.2.tgz
+    version: 2.0.2
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 2.0.0
     created: "2026-09-17T23:23:54.633167945Z"
     description: 'Speedscale BYOC reference architecture — OTel Collector → Google
       Cloud Storage. The collector''s native awss3 exporter writes OTLP-JSON objects
@@ -833,4 +864,4 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/splunk-1.0.0/splunk-1.0.0.tgz
     version: 1.0.0
-generated: "2026-09-18T11:32:34.300095761Z"
+generated: "2026-09-21T11:51:13.176942755Z"
