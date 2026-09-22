@@ -8,6 +8,11 @@ serviceAccount:
   create: true
   name: ""
   annotations: {}
+auth:
+  mode: ambient
+  secretName: ""
+  configMapName: ""
+  audience: ""
 resources:
   requests:
     cpu: 100m
@@ -26,6 +31,11 @@ networkPolicy:
 reader:
   enabled: false
   image: ""
+  auth:
+    mode: ambient
+    secretName: ""
+    configMapName: ""
+    audience: ""
   serviceAccount:
     create: true
     name: ""

@@ -24,6 +24,39 @@ helm upgrade --install byoc-gcs speedscale-byoc/gcs \
   --namespace byoc-gcs --create-namespace -f values-gcs.yaml
 ```
 
+### Credentials outside GKE
+
+The default `auth.mode: ambient` uses Application Default Credentials from the environment, including GKE Workload Identity. For a self-hosted cluster, choose one of these modes for the collector. Create the referenced Secret or ConfigMap in the chart namespace before installing the chart.
+
+For a service-account key, store the JSON file in a Kubernetes Secret outside Helm values and source control:
+
+```sh
+kubectl -n byoc-gcs create secret generic gcs-writer \
+  --from-file=credentials.json=/secure/path/writer-key.json
+```
+
+```yaml
+auth:
+  mode: secret
+  secretName: gcs-writer
+```
+
+For keyless authentication, [configure Google Workload Identity Federation for self-hosted Kubernetes](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-kubernetes). Generate its credential configuration with `/var/run/service-account/token` as the credential source file, then create a ConfigMap from that file:
+
+```sh
+kubectl -n byoc-gcs create configmap gcs-writer-identity \
+  --from-file=credentials.json=/secure/path/credential-configuration.json
+```
+
+```yaml
+auth:
+  mode: federation
+  configMapName: gcs-writer-identity
+  audience: https://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID
+```
+
+Both modes mount the file at `/var/run/google/credentials.json` and set `GOOGLE_APPLICATION_CREDENTIALS` on the collector. Federation also projects a renewable Kubernetes service-account token at `/var/run/service-account/token`. Set `reader.auth` to the same mode with a separate Secret or ConfigMap and a read-only Google identity when enabling the cluster reader. The reader never uses the collector's credential settings.
+
 The delivery queue is memory-only by default and does not create a PersistentVolumeClaim. Enable persistence only when the cluster permits dynamic volume provisioning:
 
 ```yaml
@@ -97,4 +130,4 @@ The collector image is pinned in `values.yaml`. Review the [GCS exporter configu
 
 ## Migration from `fluentbit-gcs`
 
-`fluentbit-gcs` uses the S3-compatible XML API and HMAC credentials. This chart uses Google's native exporter and Workload Identity. Install it under a separate release, validate the new prefix, and then change only `forwarder.exporters.byoc_gcs.otel_endpoint`. Existing objects remain readable.
+`fluentbit-gcs` uses the S3-compatible XML API and HMAC credentials. This chart uses Google's native exporter and the Google credential mode selected above. Install it under a separate release, validate the new prefix, and then change only `forwarder.exporters.byoc_gcs.otel_endpoint`. Existing objects remain readable.

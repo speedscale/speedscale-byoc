@@ -35,6 +35,11 @@ spec:
         - name: collector
           image: {{ .Values.image }}
           args: ["--config=/conf/otel.yaml"]
+{{- if ne .Values.auth.mode "ambient" }}
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/run/google/credentials.json
+{{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -51,6 +56,12 @@ spec:
             httpGet: {path: /, port: health}
           volumeMounts:
             - {name: config, mountPath: /conf, readOnly: true}
+{{- if ne .Values.auth.mode "ambient" }}
+            - {name: google-credentials, mountPath: /var/run/google, readOnly: true}
+{{- end }}
+{{- if eq .Values.auth.mode "federation" }}
+            - {name: google-token, mountPath: /var/run/service-account, readOnly: true}
+{{- end }}
 {{- if .Values.delivery.persistence.enabled }}
             - {name: queue, mountPath: /var/lib/otel}
 {{- end }}
@@ -58,6 +69,26 @@ spec:
         - name: config
           configMap:
             name: {{ include "gcs.name" . }}
+{{- if eq .Values.auth.mode "secret" }}
+        - name: google-credentials
+          secret:
+            secretName: {{ .Values.auth.secretName | quote }}
+            items:
+              - {key: credentials.json, path: credentials.json}
+{{- else if eq .Values.auth.mode "federation" }}
+        - name: google-credentials
+          configMap:
+            name: {{ .Values.auth.configMapName | quote }}
+            items:
+              - {key: credentials.json, path: credentials.json}
+        - name: google-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: {{ .Values.auth.audience | quote }}
+                  expirationSeconds: 3600
+                  path: token
+{{- end }}
 {{- if .Values.delivery.persistence.enabled }}
         - name: queue
           persistentVolumeClaim:

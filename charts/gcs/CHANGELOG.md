@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.0] - 2026-09-22
+
+- Add Secret-backed service-account keys and Workload Identity Federation for self-hosted Kubernetes, with separate collector and reader credentials.
+
 ## [1.2.0] - 2026-09-22
 
 - Make the persistent delivery queue optional and disabled by default so installations do not require a PersistentVolumeClaim.
