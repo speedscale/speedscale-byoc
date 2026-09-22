@@ -43,18 +43,22 @@ data:
         sending_queue:
           enabled: true
           queue_size: {{ .Values.delivery.queueSize }}
+{{- if .Values.delivery.persistence.enabled }}
           storage: file_storage
+{{- end }}
         retry_on_failure:
           enabled: true
           max_elapsed_time: 0s
     extensions:
       health_check:
         endpoint: 0.0.0.0:13133
+{{- if .Values.delivery.persistence.enabled }}
       file_storage:
         directory: /var/lib/otel/queue
         create_directory: true
+{{- end }}
     service:
-      extensions: [health_check, file_storage]
+      extensions: [health_check{{ if .Values.delivery.persistence.enabled }}, file_storage{{ end }}]
       pipelines:
         logs:
           receivers: [otlp]

@@ -12,8 +12,10 @@ metadata:
   name: {{ include "gcs.name" . }}
 spec:
   replicas: 1
+{{- if .Values.delivery.persistence.enabled }}
   strategy:
     type: Recreate
+{{- end }}
   selector:
     matchLabels:
       app: {{ include "gcs.name" . }}
@@ -49,14 +51,18 @@ spec:
             httpGet: {path: /, port: health}
           volumeMounts:
             - {name: config, mountPath: /conf, readOnly: true}
+{{- if .Values.delivery.persistence.enabled }}
             - {name: queue, mountPath: /var/lib/otel}
+{{- end }}
       volumes:
         - name: config
           configMap:
             name: {{ include "gcs.name" . }}
+{{- if .Values.delivery.persistence.enabled }}
         - name: queue
           persistentVolumeClaim:
             claimName: {{ include "gcs.name" . }}-queue
+{{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -68,6 +74,7 @@ spec:
   ports:
     - {name: grpc, port: 4317, targetPort: grpc}
     - {name: http, port: 4318, targetPort: http}
+{{- if .Values.delivery.persistence.enabled }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -78,3 +85,4 @@ spec:
   resources:
     requests:
       storage: {{ .Values.delivery.persistence.size }}
+{{- end }}
