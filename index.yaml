@@ -582,6 +582,16 @@ entries:
   gcs:
   - apiVersion: v2
     appVersion: 0.160.0
+    created: "2026-09-22T11:45:03.893021505Z"
+    description: Native Google Cloud Storage traffic archive.
+    digest: 539efffb0ad62883cb25f43b8c029615178125e8abc59f2a7b1042fde2245ada
+    name: gcs
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/gcs-1.2.0/gcs-1.2.0.tgz
+    version: 1.2.0
+  - apiVersion: v2
+    appVersion: 0.160.0
     created: "2026-09-17T23:23:55.086436728Z"
     description: Native Google Cloud Storage traffic archive.
     digest: 1976f2a0b93bfa5447485cd60fda4ad468227ad2a562f5c5a8aa19e71aa3797c
@@ -898,4 +908,4 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/splunk-1.0.0/splunk-1.0.0.tgz
     version: 1.0.0
-generated: "2026-09-21T13:17:13.85689164Z"
+generated: "2026-09-22T11:45:03.89309404Z"
