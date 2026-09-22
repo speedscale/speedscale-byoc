@@ -36,6 +36,8 @@ deployment = next(item for item in objects if item["kind"] == "Deployment")
 assert "strategy" not in deployment["spec"]
 assert all(volume["name"] != "queue" for volume in deployment["spec"]["template"]["spec"]["volumes"])
 assert all(mount["name"] != "queue" for mount in deployment["spec"]["template"]["spec"]["containers"][0]["volumeMounts"])
+assert "env" not in deployment["spec"]["template"]["spec"]["containers"][0]
+assert all(volume["name"] != "google-credentials" for volume in deployment["spec"]["template"]["spec"]["volumes"])
 image = deployment["spec"]["template"]["spec"]["containers"][0]["image"]
 validate_collector_config(config, image)
 print(json.dumps({"channel": "gcs", "exporters": ["google_cloud_storage"], "status": "valid"}))
@@ -58,6 +60,7 @@ reader_args = ["helm", "template", "test", str(chart), "--set", "reader.enabled=
 objects = list(yaml.safe_load_all(subprocess.check_output(reader_args, text=True)))
 reader = next(item for item in objects if item["kind"] == "StatefulSet")
 collector = next(item for item in objects if item["kind"] == "Deployment")
+assert all(item["name"] != "GOOGLE_APPLICATION_CREDENTIALS" for item in reader["spec"]["template"]["spec"]["containers"][0]["env"])
 assert reader["spec"]["template"]["spec"]["serviceAccountName"] != collector["spec"]["template"]["spec"]["serviceAccountName"]
 config = next(item for item in objects if item["kind"] == "ConfigMap" and "reader.json" in item.get("data", {}))
 bindings = json.loads(config["data"]["reader.json"])
@@ -79,3 +82,50 @@ for overrides in (["reader.image="], ["reader.serviceAccount.name=same", "servic
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode != 0, f"Invalid reader settings were accepted: {overrides}"
 print(json.dumps({"channel": "gcs-reader", "status": "valid"}))
+
+
+def check_auth(args, kind, mode, source_name):
+    rendered = subprocess.check_output(["helm", "template", "test", str(chart), *args], text=True)
+    resources = list(yaml.safe_load_all(rendered))
+    pod = next(item for item in resources if item["kind"] == kind)["spec"]["template"]["spec"]
+    container = pod["containers"][0]
+    assert next(item for item in container["env"] if item["name"] == "GOOGLE_APPLICATION_CREDENTIALS")["value"] == "/var/run/google/credentials.json"
+    mounts = {item["name"]: item for item in container["volumeMounts"]}
+    volumes = {item["name"]: item for item in pod["volumes"]}
+    assert mounts["google-credentials"]["readOnly"]
+    assert mounts["google-credentials"]["mountPath"] == "/var/run/google"
+    if mode == "secret":
+        assert volumes["google-credentials"]["secret"]["secretName"] == source_name
+        assert "google-token" not in volumes
+    else:
+        assert volumes["google-credentials"]["configMap"]["name"] == source_name
+        assert volumes["google-token"]["projected"]["sources"][0]["serviceAccountToken"] == {
+            "audience": "https://iam.googleapis.com/example",
+            "expirationSeconds": 3600,
+            "path": "token",
+        }
+        assert mounts["google-token"]["mountPath"] == "/var/run/service-account"
+
+
+for mode, settings, source in (
+    ("secret", ["secretName=gcs-writer"], "gcs-writer"),
+    ("federation", ["configMapName=gcs-writer-identity", "audience=https://iam.googleapis.com/example"], "gcs-writer-identity"),
+):
+    collector_overrides = [f"auth.mode={mode}", *(f"auth.{setting}" for setting in settings)]
+    collector_args = [value for override in collector_overrides for value in ("--set", override)]
+    check_auth(collector_args, "Deployment", mode, source)
+    reader_overrides = [f"reader.auth.mode={mode}", *(f"reader.auth.{setting}" for setting in settings)]
+    reader_auth_args = reader_args[4:] + [value for override in reader_overrides for value in ("--set", override)]
+    check_auth(reader_auth_args, "StatefulSet", mode, source)
+    for missing in ("secretName",) if mode == "secret" else ("configMapName", "audience"):
+        invalid = ["helm", "template", "test", str(chart), "--set", f"auth.mode={mode}"]
+        for setting in settings:
+            if not setting.startswith(f"{missing}="):
+                invalid += ["--set", f"auth.{setting}"]
+        assert subprocess.run(invalid, capture_output=True).returncode != 0
+        invalid_reader = list(reader_args) + ["--set", f"reader.auth.mode={mode}"]
+        for setting in settings:
+            if not setting.startswith(f"{missing}="):
+                invalid_reader += ["--set", f"reader.auth.{setting}"]
+        assert subprocess.run(invalid_reader, capture_output=True).returncode != 0
+print(json.dumps({"channel": "gcs-auth", "status": "valid"}))

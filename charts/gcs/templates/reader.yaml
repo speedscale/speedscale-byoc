@@ -51,6 +51,9 @@ spec:
           command: ["/usr/local/bin/proxymock", "bucket-reader"]
           env:
             - {name: HOME, value: /tmp}
+{{- if ne .Values.reader.auth.mode "ambient" }}
+            - {name: GOOGLE_APPLICATION_CREDENTIALS, value: /var/run/google/credentials.json}
+{{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -60,12 +63,38 @@ spec:
           volumeMounts:
             - {name: config, mountPath: /etc/proxymock, readOnly: true}
             - {name: tmp, mountPath: /tmp}
+{{- if ne .Values.reader.auth.mode "ambient" }}
+            - {name: google-credentials, mountPath: /var/run/google, readOnly: true}
+{{- end }}
+{{- if eq .Values.reader.auth.mode "federation" }}
+            - {name: google-token, mountPath: /var/run/service-account, readOnly: true}
+{{- end }}
       volumes:
         - name: config
           configMap:
             name: {{ include "gcs.readerName" . }}
         - name: tmp
           emptyDir: {}
+{{- if eq .Values.reader.auth.mode "secret" }}
+        - name: google-credentials
+          secret:
+            secretName: {{ .Values.reader.auth.secretName | quote }}
+            items:
+              - {key: credentials.json, path: credentials.json}
+{{- else if eq .Values.reader.auth.mode "federation" }}
+        - name: google-credentials
+          configMap:
+            name: {{ .Values.reader.auth.configMapName | quote }}
+            items:
+              - {key: credentials.json, path: credentials.json}
+        - name: google-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: {{ .Values.reader.auth.audience | quote }}
+                  expirationSeconds: 3600
+                  path: token
+{{- end }}
 {{- if .Values.reader.rbac.create }}
 {{- if not .Values.reader.rbac.subjects }}
 {{- fail "reader.rbac.subjects must name the Kubernetes users or groups allowed to read traffic" }}
