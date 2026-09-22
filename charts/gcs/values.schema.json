@@ -47,8 +47,11 @@
         "persistence": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["size"],
-          "properties": {"size": {"type": "string", "pattern": "^[0-9]+(Ki|Mi|Gi|Ti)$"}}
+          "required": ["enabled", "size"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "size": {"type": "string", "pattern": "^[0-9]+(Ki|Mi|Gi|Ti)$"}
+          }
         }
       }
     },

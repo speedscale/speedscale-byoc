@@ -17,6 +17,7 @@ resources:
 delivery:
   queueSize: 1000
   persistence:
+    enabled: false
     size: 2Gi
 networkPolicy:
   enabled: true

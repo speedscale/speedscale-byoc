@@ -24,6 +24,20 @@ helm upgrade --install byoc-gcs speedscale-byoc/gcs \
   --namespace byoc-gcs --create-namespace -f values-gcs.yaml
 ```
 
+The delivery queue is memory-only by default and does not create a PersistentVolumeClaim. Enable persistence only when the cluster permits dynamic volume provisioning:
+
+```yaml
+delivery:
+  queueSize: 1000
+  persistence:
+    enabled: true
+    size: 2Gi
+```
+
+A persistent queue retains buffered records when the collector pod is replaced. The default memory queue loses buffered records when the collector restarts, but avoids a storage dependency.
+
+When upgrading from chart 1.1.0, set `delivery.persistence.enabled=true` to retain the existing PVC-backed queue. Without that setting, Helm removes the queue PVC during the upgrade.
+
 Configure a dedicated Forwarder exporter for this collector:
 
 ```yaml
@@ -77,7 +91,7 @@ proxymock import gcs --bucket-from-cluster --bucket-namespace byoc-gcs \
 
 ## Validate
 
-Send traced and untraced records, including records with identical timestamps, and verify every UUID and payload survives export and import. Monitor exporter failures and queue saturation. Queues are memory-only, retries expire after five minutes, collector restarts can lose queued records, and retries can create duplicates.
+Send traced and untraced records, including records with identical timestamps, and verify every UUID and payload survives export and import. Monitor exporter failures and queue saturation. Retries do not expire, collector restarts can lose records from the default memory queue, and retries can create duplicates.
 
 The collector image is pinned in `values.yaml`. Review the [GCS exporter configuration](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.160.0/exporter/googlecloudstorageexporter) before upgrading.
 
