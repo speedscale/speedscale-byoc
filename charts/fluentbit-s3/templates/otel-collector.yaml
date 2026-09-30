@@ -130,6 +130,7 @@ spec:
       automountServiceAccountToken: {{ .Values.irsa.enabled }}
       securityContext:
         runAsNonRoot: true
+        fsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
       {{- if and .Values.irsa.enabled .Values.irsa.roleArn }}

@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.2.2] - 2026-09-30
+
+- Grant the non-root collector access to its persistent queue volume.
+
 ## [2.2.1] - 2026-09-21
 
 - Direct GCS users to the native `gcs` chart instead of the deprecated `fluentbit-gcs` chart.
