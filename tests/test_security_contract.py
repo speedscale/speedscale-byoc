@@ -31,6 +31,9 @@ def main():
         assert "ALL" in container["securityContext"]["capabilities"]["drop"]
         assert any(item.get("kind") == "NetworkPolicy" for item in objects)
 
+        if chart == "fluentbit-s3":
+            assert pod["spec"]["securityContext"]["fsGroup"] == 10001
+
     for chart in ("otlp", "splunk", "kafka"):
         args = ["--set", "securityProfile.enabled=true"] if chart == "otlp" else []
         objects = render(chart, *args)
