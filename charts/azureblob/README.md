@@ -26,7 +26,7 @@ proxymock import azureblob \
   --out proxymock/azure-traffic
 ```
 
-`--bucket` names the Azure container. Set `--prefix` only when you need to narrow the blob path; the collector's Azure layout does not require the S3 `byoc/` prefix. Existing time windows, traffic filters, DLP, limits, output formats, and `--follow` apply.
+`--bucket` names the Azure container. This chart configures no blob prefix, so leave `--prefix` empty unless you added one to the collector's exporter; the S3 `byoc/` prefix does not apply. Set `--prefix` only to narrow the blob path. Existing time windows, traffic filters, DLP, limits, output formats, and `--follow` apply.
 
 For connection-string authentication, set `AZURE_STORAGE_CONNECTION_STRING` in the shell before launching proxymock and omit `--azure-account-url`. Store it outside command arguments, Helm values, and source control. Identity authentication uses `--azure-account-url` or `AZURE_STORAGE_ACCOUNT_URL`.
 
