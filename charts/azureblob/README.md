@@ -12,9 +12,27 @@ Bit and no in-cluster storage.
 
 ## proxymock pull support
 
-This chart supports storage archival, but proxymock cannot pull directly from Azure Blob Storage. Azure Blob Storage does not expose an S3-compatible API, so `proxymock import s3`, the `pull_byoc_bucket` MCP tool, and the `proxymock web` BYOC source picker do not support this backend. An Azure Blob URL cannot be used as `--s3-endpoint-url`.
+Native reads use `proxymock import azureblob`, the `pull_byoc_bucket` MCP tool with `storage-provider=azureblob`, or **Azure Blob Storage** in the `proxymock web` traffic source picker. The client queries Azure directly and imports matching traffic into local RRPair files.
 
-Use [`scripts/azure-gather.py`](../../scripts/azure-gather.py) for manual retrieval. Its usage examples and prerequisites are documented at the top of the script. This script is a separate retrieval workflow; there is no native `proxymock import azureblob` command. Choose the S3 or GCS chart if your workflow requires a direct proxymock bucket pull.
+**Version requirement:** native Azure reads are unreleased. Released proxymock versions through **v2.5.1165** require [`scripts/azure-gather.py`](../../scripts/azure-gather.py) for retrieval. The first supporting release version must be recorded here after the implementation is merged and released. Installing this collector chart alone does not add native reads to an older proxymock client.
+
+Authenticate on the machine running proxymock with `az login`, an Azure workload identity, or environment credentials supported by [DefaultAzureCredential](https://learn.microsoft.com/en-us/azure/developer/go/sdk/authentication/credential-chains). Grant the reader **Storage Blob Data Reader** on the container. Keep the collector's writer credentials separate.
+
+```sh
+az login
+proxymock import azureblob \
+  --azure-account-url https://mystorageacct.blob.core.windows.net \
+  --bucket byoc --from now-1h --service checkout \
+  --out proxymock/azure-traffic
+```
+
+`--bucket` names the Azure container. Set `--prefix` only when you need to narrow the blob path; the collector's Azure layout does not require the S3 `byoc/` prefix. Existing time windows, traffic filters, DLP, limits, output formats, and `--follow` apply.
+
+For connection-string authentication, set `AZURE_STORAGE_CONNECTION_STRING` in the shell before launching proxymock and omit `--azure-account-url`. Store it outside command arguments, Helm values, and source control. Identity authentication uses `--azure-account-url` or `AZURE_STORAGE_ACCOUNT_URL`.
+
+In `proxymock web`, select **Azure Blob Storage**, enter the container and account URL, and use local Azure credentials. Leave the account URL empty when using a connection string. Azure cluster reader discovery is not supported; credentials come from the machine running proxymock.
+
+For MCP, call `pull_byoc_bucket` with `storage-provider: azureblob`, `bucket: byoc`, and `azure-account-url: https://mystorageacct.blob.core.windows.net`. Credentials remain in the MCP server environment.
 
 ## Architecture
 

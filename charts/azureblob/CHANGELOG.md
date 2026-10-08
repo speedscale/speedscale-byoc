@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.1] - Unreleased
+
+- Document native Azure Blob query/import through proxymock CLI, web, and MCP, including reader authentication and container settings.
+- Record that native reads are pending release and are unavailable in proxymock through v2.5.1165; keep manual retrieval guidance for those versions.
+
 ## [1.1.0] - 2026-09-17
 
 - Upgrade the collector to digest-pinned 0.160.0.
