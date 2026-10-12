@@ -6,6 +6,40 @@ entries:
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
     appVersion: 0.160.0
+    created: "2026-10-12T11:56:46.112730665Z"
+    description: 'Speedscale BYOC → OTel Collector → Azure Blob Storage. The collector''s
+      azureblob exporter writes OTLP-JSON blobs to your container; no in-cluster storage.
+      Pairs with the Speedscale Operator chart (installed separately into the `speedscale`
+      namespace); this chart installs only the in-cluster pipeline that receives RRPairs
+      from the Forwarder''s byoc_azure exporter and ships them to long-term object
+      storage. '
+    digest: 9e8e32215165ea9ef9be100c95bd120bc4ffc124816b72d146b1cedf4d763677
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - azure
+    - azure-blob-storage
+    - opentelemetry
+    - azureblob
+    - archive
+    - data-lake
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+      url: https://speedscale.com
+    name: azureblob
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/azureblob
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/azureblob-1.1.1/azureblob-1.1.1.tgz
+    version: 1.1.1
+  - annotations:
+      artifacthub.io/category: infrastructure
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 0.160.0
     created: "2026-09-17T23:23:53.910133924Z"
     description: 'Speedscale BYOC → OTel Collector → Azure Blob Storage. The collector''s
       azureblob exporter writes OTLP-JSON blobs to your container; no in-cluster storage.
@@ -952,4 +986,4 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/splunk-1.0.0/splunk-1.0.0.tgz
     version: 1.0.0
-generated: "2026-09-30T17:48:14.386127232Z"
+generated: "2026-10-12T11:56:46.112789333Z"
