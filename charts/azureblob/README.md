@@ -7,14 +7,13 @@ every observed request/response — for compliance retention, downstream
 replay/training pipelines, or batch analytics — instead of (or in addition to)
 a live query backend like Elasticsearch or Loki.
 
-The collector's native `azureblob` exporter writes blobs directly; no Fluent
-Bit and no in-cluster storage.
+The collector's native `azure_blob` exporter writes blobs directly to Azure. A persistent in-cluster queue buffers delivery retries; the archive lives in the Blob container.
 
 ## proxymock pull support
 
 Native reads use `proxymock import azureblob`, the `pull_byoc_bucket` MCP tool with `storage-provider=azureblob`, or **Azure Blob Storage** in the `proxymock web` traffic source picker. The client queries Azure directly and imports matching traffic into local RRPair files.
 
-**Version requirement:** native Azure reads are unreleased. Released proxymock versions through **v2.5.1165** require [`scripts/azure-gather.py`](../../scripts/azure-gather.py) for retrieval. The first supporting release version must be recorded here after the implementation is merged and released. Installing this collector chart alone does not add native reads to an older proxymock client.
+**Version requirement:** native Azure reads are available in **proxymock v2.5.1169 and later**. Older clients can upgrade or use [`scripts/azure-gather.py`](../../scripts/azure-gather.py) for manual retrieval. Installing this collector chart alone does not upgrade the proxymock client.
 
 Authenticate on the machine running proxymock with `az login`, an Azure workload identity, or environment credentials supported by [DefaultAzureCredential](https://learn.microsoft.com/en-us/azure/developer/go/sdk/authentication/credential-chains). Grant the reader **Storage Blob Data Reader** on the container. Keep the collector's writer credentials separate.
 
@@ -22,13 +21,13 @@ Authenticate on the machine running proxymock with `az login`, an Azure workload
 az login
 proxymock import azureblob \
   --azure-account-url https://mystorageacct.blob.core.windows.net \
-  --bucket byoc --from now-1h --service checkout \
-  --out proxymock/azure-traffic
+  --bucket byoc --from now-1h --to now --service checkout \
+  --limit 100 --out proxymock/azure-traffic --output json
 ```
 
-`--bucket` names the Azure container. This chart configures no blob prefix, so leave `--prefix` empty unless you added one to the collector's exporter; the S3 `byoc/` prefix does not apply. Set `--prefix` only to narrow the blob path. Existing time windows, traffic filters, DLP, limits, output formats, and `--follow` apply.
+`--bucket` names the Azure container. This chart writes `YYYY/MM/DD/logs_*` at the container root, so leave `--prefix` unset unless you configured a matching prefix in the exporter. The S3 chart's `byoc/` prefix does not apply. Existing time windows, traffic filters, DLP, limits, output formats, and `--follow` apply. A limited viewing sample can omit part of a journey; check completeness before replay.
 
-For connection-string authentication, set `AZURE_STORAGE_CONNECTION_STRING` in the shell before launching proxymock and omit `--azure-account-url`. Store it outside command arguments, Helm values, and source control. Identity authentication uses `--azure-account-url` or `AZURE_STORAGE_ACCOUNT_URL`.
+For connection-string authentication, set `AZURE_STORAGE_CONNECTION_STRING` in the shell before launching proxymock and omit `--azure-account-url`. Store it outside command arguments, Helm values, and source control. Identity authentication uses `--azure-account-url` or `AZURE_STORAGE_ACCOUNT_URL`. Account-URL identity and connection-string settings are mutually exclusive. The URL must be an HTTPS account endpoint without a container path or SAS token.
 
 In `proxymock web`, select **Azure Blob Storage**, enter the container and account URL, and use local Azure credentials. Leave the account URL empty when using a connection string. Azure cluster reader discovery is not supported; credentials come from the machine running proxymock.
 
@@ -55,7 +54,7 @@ flowchart LR
   Fwd -.->|control plane only:<br/>registration, DLP config| SC
 ```
 
-RRPairs never leave your infrastructure — the capture path terminates in your own Blob container. The dashed link is control plane only: the Operator registers the cluster and the Forwarder fetches its DLP config at startup. No RRPair data crosses it.
+This collector channel sends RRPairs to your Azure Blob container. Forwarder exporters are independent: enabling this channel does not disable the Speedscale Cloud exporter or other destinations. The diagram shows the Azure-only capture path after Cloud traffic export has been disabled. Before capture, verify every enabled exporter and its filter/DLP settings using the [data-boundary setup guide](https://docs.speedscale.com/byoc/#before-you-capture).
 
 `charts/grafana/` and `charts/elasticsearch/` (sibling scenarios) are live-query
 backends — you see traffic in a dashboard. This scenario is the **archive**
@@ -77,11 +76,7 @@ Pick `grafana` or `elasticsearch` when you need an interactive dashboard / live 
 The scenarios coexist in their own namespaces; flip the forwarder's
 `byoc_azure.otel_endpoint` to switch which one receives traffic.
 
-> **Collector image is newer than the sibling charts.** The `azureblob`
-> exporter is **alpha** and did not ship in the otelcol-contrib image until
-> **~v0.153.0**, so the `0.108.0` image used by the GCS/S3 charts does not
-> contain it. This chart pins `otel/opentelemetry-collector-contrib:0.153.0`,
-> a released tag that includes the exporter.
+> **Collector image:** this chart pins OpenTelemetry Collector Contrib `0.160.0` by digest in `values.yaml`. The `azure_blob` exporter is included in that image. Keep the pinned image for the supported reference configuration; validate custom image overrides before deployment.
 
 ## Prerequisites
 
@@ -180,11 +175,11 @@ errors point at the Secret; `403` points at the container or account key.
 az storage blob list \
   --account-name mystorageacct \
   --container-name byoc \
-  --connection-string '<conn-string>' \
+  --auth-mode login \
   --output table | tail -10
 ```
 
-New blobs appear within ~30s of traffic flowing.
+New blobs appear within ~30s of traffic flowing. These reader commands require Storage Blob Data Reader on the container; the collector's ability to write does not grant access to your local identity.
 
 **5. Peek at a record**
 
@@ -192,7 +187,7 @@ New blobs appear within ~30s of traffic flowing.
 az storage blob download \
   --account-name mystorageacct \
   --container-name byoc \
-  --connection-string '<conn-string>' \
+  --auth-mode login \
   --name <blob-name> --file - 2>/dev/null | jq '.resourceLogs[0]' | head
 ```
 
@@ -213,7 +208,7 @@ Always use `http://otel-collector.<namespace>.svc.cluster.local:4317`, not a bar
 
 **Unknown exporter `azureblob` / collector crashloops on startup**
 
-The `azureblob` exporter is alpha and does not ship in the otelcol-contrib image until **~v0.153.0** (0.123.0 fails with `unknown type: azureblob`). If you overrode `image.otelCollector` to an older tag (e.g. the 0.108.0 used by the GCS/S3 charts), the collector won't recognize the exporter. Use 0.153.0 or newer; this chart defaults to 0.153.0.
+Use the digest-pinned OpenTelemetry Collector Contrib `0.160.0` image from `values.yaml`. A custom collector build or older image can omit the `azure_blob` exporter. The chart's earlier 1.0.0 release used 0.153.0; it is not the current default.
 
 **Authentication errors**
 
@@ -242,9 +237,7 @@ helm upgrade byoc-azureblob speedscale-byoc/azureblob -n byoc-azureblob --reuse-
   --set azure.container=byoc
 ```
 
-Blobs already in Azure Blob Storage are unaffected by chart upgrades. Check the
-[CHANGELOG](CHANGELOG.md) for breaking changes before upgrading — note this
-chart tracks a newer collector image than the sibling charts.
+Blobs already in Azure Blob Storage are unaffected by chart upgrades. Check the [CHANGELOG](CHANGELOG.md) for breaking changes and keep the collector image pinned by the chart.
 
 ## Configuration reference
 
@@ -253,4 +246,4 @@ chart tracks a newer collector image than the sibling charts.
 | `azure.url` | `https://CHANGEME.blob.core.windows.net/` | Storage account blob URL. `connection_string` overrides this, but it must be set. |
 | `azure.container` | `byoc` | Blob container to write RRPairs into (must exist before installing) |
 | `azure.connectionStringSecret` | `byoc-azureblob` | Name of the K8s Secret with the `connectionString` key |
-| `image.otelCollector` | `otel/opentelemetry-collector-contrib:0.153.0` | OTel Collector image — must be contrib **≥ 0.153.0** (azureblob exporter is alpha and contrib-only) |
+| `image.otelCollector` | `otel/opentelemetry-collector-contrib:0.160.0@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6` | Pinned OTel Collector Contrib image containing the `azure_blob` exporter |
