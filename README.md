@@ -88,6 +88,12 @@ proxymock import s3 --bucket my-s3-archive --prefix byoc/ \
 # Native GCS
 proxymock import gcs --bucket my-gcs-archive --prefix byoc/ \
   --service api-gateway --from now-1h --out /tmp/gcs-snapshot
+
+# Native Azure Blob (proxymock v2.5.1169+)
+proxymock import azureblob \
+  --azure-account-url https://mystorageacct.blob.core.windows.net \
+  --bucket byoc --service api-gateway --from now-1h --to now \
+  --limit 100 --out proxymock/azure-traffic --output json
 ```
 
 Datadog retrieval queries full RRPair logs directly from Datadog:
@@ -97,7 +103,7 @@ python3 recipes/datadog-to-replay/gather.py \
   --trace-id <trace-id> --service api-gateway --out /tmp/datadog-capture
 ```
 
-Companion scripts for legacy GCS, S3, Loki, Elasticsearch, Azure Blob, and generic Datadog log searches live in [`scripts/`](scripts/).
+The [Azure chart guide](charts/azureblob/README.md#proxymock-pull-support) covers reader credentials and its root/date blob layout. Leave `--prefix` unset for that default layout. Companion scripts for legacy GCS, S3, Loki, Elasticsearch, and generic Datadog log searches live in [`scripts/`](scripts/); `azure-gather.py` remains available for older proxymock clients and manual retrieval.
 
 ## Development checks
 
