@@ -1,0 +1,81 @@
+{{- if .Values.compaction.enabled }}
+{{- $c := .Values.compaction }}
+{{- if and $c.image (not $c.command) (not $c.args) }}
+{{- fail "set compaction.command or compaction.args for a custom compaction image" }}
+{{- end }}
+{{- $limit := dig "limits" "memory" "" $c.resources }}
+{{- if not $limit }}
+{{- fail "compaction.resources.limits.memory is required; set it to at least 1Gi" }}
+{{- end }}
+{{- if lt (include "iceberg.memoryMiB" $limit | float64) 1024.0 }}
+{{- fail (printf "compaction.resources.limits.memory is %s; compaction needs at least 1Gi" $limit) }}
+{{- end }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "iceberg.name" . }}-compaction
+  labels:
+    app: {{ include "iceberg.name" . }}-compaction
+spec:
+  schedule: {{ $c.schedule | quote }}
+  concurrencyPolicy: {{ $c.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ $c.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $c.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ $c.backoffLimit }}
+      activeDeadlineSeconds: {{ $c.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            app: {{ include "iceberg.name" . }}-compaction
+            {{- with include "iceberg.podLabels" . | trim }}{{ . | nindent 12 }}{{- end }}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ include "iceberg.serviceAccount" . }}
+          {{- if $c.podSecurityContext }}
+          securityContext: {{- toYaml $c.podSecurityContext | nindent 12 }}
+          {{- else }}
+          securityContext: {{- include "iceberg.podSecurityContext" . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: compaction
+              image: {{ default (include "iceberg.image" .) $c.image }}
+              {{- with $c.command }}
+              command: {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with $c.args }}
+              args: {{- toYaml . | nindent 16 }}
+              {{- end }}
+              envFrom: {{- include "iceberg.envFrom" . | nindent 16 }}
+              env:
+                - name: ICEBERG_COMPACT_TARGET_FILE_BYTES
+                  value: {{ $c.targetFileBytes | int64 | quote }}
+                - name: ICEBERG_COMPACT_MIN_INPUT_FILES
+                  value: {{ $c.minInputFiles | int64 | quote }}
+                - name: GOMEMLIMIT
+                  value: {{ printf "%dMiB" (int64 (floor (mulf (include "iceberg.memoryMiB" $limit | float64) 0.8))) | quote }}
+                {{- with include "iceberg.env" . | trim }}{{ . | nindent 16 }}{{- end }}
+                {{- with $c.env }}
+                {{- toYaml . | nindent 16 }}
+                {{- end }}
+              {{- if $c.securityContext }}
+              securityContext: {{- toYaml $c.securityContext | nindent 16 }}
+              {{- else }}
+              securityContext: {{- include "iceberg.containerSecurityContext" . | nindent 16 }}
+              {{- end }}
+              resources: {{- toYaml $c.resources | nindent 16 }}
+              volumeMounts:
+                - {name: tmp, mountPath: /tmp}
+                {{- with include "iceberg.credentialVolumeMounts" . | trim }}{{ . | nindent 16 }}{{- end }}
+          volumes:
+            - name: tmp
+              emptyDir: {}
+            {{- with include "iceberg.credentialVolumes" . | trim }}{{ . | nindent 12 }}{{- end }}
+          {{- with .Values.nodeSelector }}
+          nodeSelector: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations: {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

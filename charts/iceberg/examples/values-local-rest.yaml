@@ -1,0 +1,16 @@
+# Values for the local demo catalog in local-rest-catalog.yaml.
+#
+#   kubectl create namespace byoc-iceberg
+#   kubectl -n byoc-iceberg create secret generic iceberg-catalog \
+#     --from-literal=catalog-properties.json='{"s3.endpoint":"http://object-store.iceberg.svc.cluster.local:9000","s3.region":"us-east-1","s3.access-key-id":"admin","s3.secret-access-key":"password"}'
+#   helm upgrade --install byoc-iceberg speedscale-byoc/iceberg -n byoc-iceberg -f values-local-rest.yaml
+iceberg:
+  catalog:
+    type: rest
+    uri: http://iceberg-rest.iceberg.svc.cluster.local:8181
+    propertiesSecret:
+      name: iceberg-catalog
+      key: catalog-properties.json
+  commit:
+    # Short interval so rows appear quickly in a demo.
+    interval: 10s

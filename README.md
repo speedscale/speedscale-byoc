@@ -21,6 +21,7 @@ Additional charts remain independent destinations:
 | [`charts/grafana/`](charts/grafana/) | Local-demo Loki and Prometheus stack with Grafana |
 | [`charts/elasticsearch/`](charts/elasticsearch/) | Local-demo Elasticsearch and Kibana stack |
 | [`charts/azureblob/`](charts/azureblob/) | Azure Blob Storage |
+| [`charts/iceberg/`](charts/iceberg/) | Apache Iceberg table through AWS S3 Tables, AWS Glue, or a REST catalog |
 | [`charts/fluentbit-gcs/`](charts/fluentbit-gcs/) | **Deprecated.** Legacy GCS path using the S3-compatible API and HMAC. Use `gcs` for new installations. |
 | [`charts/splunk/`](charts/splunk/) | Splunk HEC security channel with metadata-only defaults |
 | [`charts/kafka/`](charts/kafka/) | Durable Kafka bridge for security and data pipelines |
@@ -111,6 +112,7 @@ The [Azure chart guide](charts/azureblob/README.md#proxymock-pull-support) cover
 for chart in charts/*/; do helm lint --strict "$chart"; done
 python3 tests/test_channel_boundaries.py
 python3 tests/test_security_contract.py
+python3 tests/test_iceberg_chart.py
 python3 -m unittest discover -s recipes/datadog-to-replay -p 'test_*.py' -v
 ```
 

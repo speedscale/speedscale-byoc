@@ -1,0 +1,137 @@
+image:
+  repository: gcr.io/speedscale/iceberg-sink
+  # Pin a released version (vX.Y.Z) in production.
+  tag: latest
+  digest: ""
+  pullPolicy: ""
+
+# Several replicas can commit to one table safely.
+replicaCount: 1
+
+iceberg:
+  catalog:
+    # rest, glue or s3tables
+    type: rest
+    # Required for rest. For s3tables it defaults to the regional S3 Tables endpoint.
+    uri: http://iceberg-rest.iceberg.svc.cluster.local:8181
+    # Warehouse location. For s3tables, the table bucket ARN.
+    warehouse: ""
+    # Extra iceberg-go catalog and FileIO properties, rendered as ICEBERG_CATALOG_PROPERTIES.
+    # Keep secrets such as a REST "credential" or "token" in propertiesSecret instead.
+    properties: {}
+    # A Secret key holding the whole ICEBERG_CATALOG_PROPERTIES JSON object. Replaces properties.
+    propertiesSecret:
+      name: ""
+      key: catalog-properties.json
+  namespace: speedscale
+  table: rrpairs
+  commit:
+    # Longest time before buffered rows are committed.
+    interval: 60s
+    # Commit early at this buffered size.
+    maxBatchBytes: 8388608
+    # Past this, the sink returns UNAVAILABLE and the Forwarder retries.
+    maxPendingBytes: 67108864
+    # Written to the table as commit.retry.num-retries.
+    retries: 10
+  # Snapshot expiry and old-metadata cleanup in the sink: auto (on for rest and glue, off for
+  # s3tables, which maintains tables itself and denies client deletes), on or off. Use off for
+  # a Glue table whose snapshot retention optimizer is enabled.
+  maintenance: auto
+
+# Region for s3tables and glue.
+awsRegion: us-east-1
+logLevel: info
+
+# GOMEMLIMIT for the sink. Empty sets it to 80% of resources.limits.memory.
+goMemLimit: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  # Workload identity, for example:
+  #   eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/byoc-iceberg
+  #   iam.gke.io/gcp-service-account: byoc-iceberg@my-project.iam.gserviceaccount.com
+  #   azure.workload.identity/client-id: 00000000-0000-0000-0000-000000000000
+  annotations: {}
+
+auth:
+  # ambient uses the cloud SDK default credential chain (IRSA, EKS Pod Identity, GKE
+  # Workload Identity, Azure Workload Identity, node identity). secret also loads every key
+  # of secretName as environment variables, for example AWS_ACCESS_KEY_ID and
+  # AWS_SECRET_ACCESS_KEY, or AZURE_STORAGE_ACCOUNT_KEY.
+  mode: ambient
+  secretName: ""
+  # Optional key in secretName holding a Google service-account JSON key. It is mounted
+  # and GOOGLE_APPLICATION_CREDENTIALS points at it.
+  googleCredentialsKey: ""
+
+# Adds the azure.workload.identity/use label that Azure Workload Identity requires.
+azureWorkloadIdentity: false
+
+extraEnv: []
+podLabels: {}
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Keep accepting OTLP while the Service drops a stopping pod, so the Forwarder reconnects to
+# another replica instead of hitting a closed port. The sink then commits buffered rows on
+# SIGTERM; terminationGracePeriodSeconds must cover both.
+preStopSleepSeconds: 5
+terminationGracePeriodSeconds: 60
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+networkPolicy:
+  enabled: true
+  # Namespaces allowed to send OTLP to port 4317. The release namespace is always allowed.
+  allowedNamespaces:
+    - speedscale
+  # Namespaces allowed to scrape port 8080 (/metrics), for example monitoring.
+  metricsNamespaces: []
+
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}
+
+# Scheduled compaction for REST catalogs, and for Glue tables without the compaction
+# optimizer. S3 Tables compacts tables itself. By default the job runs the sink image's compact mode, which bin-packs each
+# partition's small files with the same ICEBERG_* settings and credentials as the sink.
+compaction:
+  enabled: false
+  schedule: "17 */6 * * *"
+  # Output data file size. Memory use grows with it.
+  targetFileBytes: 134217728
+  # Fewest small files in a partition worth rewriting.
+  minInputFiles: 5
+  # Empty uses the sink image. To use another engine (for example Spark
+  # rewrite_data_files), set image, command and args.
+  image: ""
+  command: []
+  args: ["compact"]
+  env: []
+  concurrencyPolicy: Forbid
+  activeDeadlineSeconds: 3600
+  backoffLimit: 1
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  # Replace the sink's hardened security contexts (non-root UID 2100, read-only root
+  # filesystem) when the engine image needs another user or a writable filesystem.
+  podSecurityContext: {}
+  securityContext: {}
+  # Compaction holds a group of files in memory: the memory limit must be at least 1Gi.
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 1Gi
