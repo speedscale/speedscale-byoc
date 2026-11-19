@@ -55,7 +55,7 @@ serviceAccount:
     eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/byoc-iceberg
 ```
 
-The role needs Glue database and table read, create and update permissions plus S3 read and write on the warehouse prefix. Turn on Glue table optimizers for compaction and snapshot retention. Maintenance in the sink stays off by default for Glue.
+The role needs Glue database and table read, create and update permissions plus S3 read and write on the warehouse prefix. After the sink creates the table, [enable compaction](https://docs.aws.amazon.com/glue/latest/dg/enable-compaction.html) and [snapshot retention](https://docs.aws.amazon.com/glue/latest/dg/enable-snapshot-retention.html) optimizers on it with an optimizer IAM role. Glue turns both off for new tables, and maintenance in the sink stays off by default for Glue, so without them small files and snapshots accumulate.
 
 ### REST catalog
 
@@ -134,7 +134,7 @@ The chart sets `GOMEMLIMIT` to 80% of `resources.limits.memory`; override it wit
 
 ## Compaction
 
-Each commit writes about one data file per active partition, so a 60 s interval creates about 1,440 files per partition per day for each replica. S3 Tables and Glue compact these for you. A self-managed REST catalog needs a scheduled rewrite, which the optional CronJob runs with the same catalog settings and credentials as the sink:
+Each commit writes about one data file per active partition, so a 60 s interval creates about 1,440 files per partition per day for each replica. S3 Tables compacts these for you, and Glue does once its compaction optimizer is enabled. A self-managed REST catalog needs a scheduled rewrite, which the optional CronJob runs with the same catalog settings and credentials as the sink:
 
 ```yaml
 compaction:
