@@ -89,14 +89,28 @@ def main():
     )
     assert kind(s3tables, "ConfigMap")[0]["data"]["ICEBERG_CATALOG_TYPE"] == "s3tables"
 
-    compaction = render("--set", "compaction.enabled=true", "--set", "compaction.command={/opt/compact}")
+    compaction = render("--set", "compaction.enabled=true")
     job = kind(compaction, "CronJob")[0]["spec"]["jobTemplate"]["spec"]["template"]["spec"]
     container = job["containers"][0]
-    assert container["command"] == ["/opt/compact"]
+    assert container["image"] == "gcr.io/speedscale/iceberg-sink:latest"
+    assert "command" not in container
+    assert container["args"] == ["compact"]
     assert container["resources"]["limits"]["memory"] == "1Gi"
-    assert env_of(container)["GOMEMLIMIT"]["value"] == "819MiB"
+    env = env_of(container)
+    assert env["GOMEMLIMIT"]["value"] == "819MiB"
+    assert env["ICEBERG_COMPACT_TARGET_FILE_BYTES"]["value"] == "134217728"
+    assert env["ICEBERG_COMPACT_MIN_INPUT_FILES"]["value"] == "5"
     assert {"configMapRef": {"name": "contract-iceberg"}} in container["envFrom"]
     assert container["securityContext"]["readOnlyRootFilesystem"] is True
+
+    custom = render(
+        "--set", "compaction.enabled=true", "--set", "compaction.image=example/spark:3",
+        "--set", "compaction.command={/opt/compact}", "--set-json", "compaction.args=[]",
+    )
+    container = kind(custom, "CronJob")[0]["spec"]["jobTemplate"]["spec"]["template"]["spec"]["containers"][0]
+    assert container["image"] == "example/spark:3"
+    assert container["command"] == ["/opt/compact"]
+    assert "args" not in container
 
     rejects("--set", "iceberg.catalog.uri=")
     rejects("--set", "iceberg.catalog.type=s3tables")
@@ -104,9 +118,8 @@ def main():
     rejects("--set", "iceberg.maintenance=sometimes")
     rejects("--set", "auth.mode=secret")
     rejects("--set", "auth.googleCredentialsKey=key.json")
-    rejects("--set", "compaction.enabled=true")
-    rejects("--set", "compaction.enabled=true", "--set", "compaction.command={/opt/compact}",
-            "--set", "compaction.resources.limits.memory=512Mi")
+    rejects("--set", "compaction.enabled=true", "--set", "compaction.resources.limits.memory=512Mi")
+    rejects("--set", "compaction.enabled=true", "--set", "compaction.image=example/spark:3", "--set-json", "compaction.args=[]")
     print("validated iceberg sink chart")
 
 

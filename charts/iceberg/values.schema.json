@@ -150,10 +150,12 @@
     "compaction": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled", "schedule", "image", "command", "args", "env", "resources"],
+      "required": ["enabled", "schedule", "targetFileBytes", "minInputFiles", "image", "command", "args", "env", "resources"],
       "properties": {
         "enabled": {"type": "boolean"},
         "schedule": {"type": "string", "minLength": 1},
+        "targetFileBytes": {"type": "integer", "minimum": 1},
+        "minInputFiles": {"type": "integer", "minimum": 1},
         "image": {"type": "string"},
         "command": {"type": "array", "items": {"type": "string"}},
         "args": {"type": "array", "items": {"type": "string"}},
@@ -174,9 +176,7 @@
             }
           }
         }
-      },
-      "if": {"properties": {"enabled": {"const": true}}},
-      "then": {"properties": {"command": {"minItems": 1}}}
+      }
     }
   }
 }

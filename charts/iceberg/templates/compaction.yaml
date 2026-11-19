@@ -1,7 +1,7 @@
 {{- if .Values.compaction.enabled }}
 {{- $c := .Values.compaction }}
-{{- if not $c.command }}
-{{- fail "compaction.command is required when compaction.enabled is true" }}
+{{- if and $c.image (not $c.command) (not $c.args) }}
+{{- fail "set compaction.command or compaction.args for a custom compaction image" }}
 {{- end }}
 {{- $limit := dig "limits" "memory" "" $c.resources }}
 {{- if not $limit }}
@@ -41,12 +41,18 @@ spec:
           containers:
             - name: compaction
               image: {{ default (include "iceberg.image" .) $c.image }}
-              command: {{- toYaml $c.command | nindent 16 }}
+              {{- with $c.command }}
+              command: {{- toYaml . | nindent 16 }}
+              {{- end }}
               {{- with $c.args }}
               args: {{- toYaml . | nindent 16 }}
               {{- end }}
               envFrom: {{- include "iceberg.envFrom" . | nindent 16 }}
               env:
+                - name: ICEBERG_COMPACT_TARGET_FILE_BYTES
+                  value: {{ $c.targetFileBytes | int64 | quote }}
+                - name: ICEBERG_COMPACT_MIN_INPUT_FILES
+                  value: {{ $c.minInputFiles | int64 | quote }}
                 - name: GOMEMLIMIT
                   value: {{ printf "%dMiB" (int64 (floor (mulf (include "iceberg.memoryMiB" $limit | float64) 0.8))) | quote }}
                 {{- with include "iceberg.env" . | trim }}{{ . | nindent 16 }}{{- end }}

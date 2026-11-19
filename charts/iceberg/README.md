@@ -134,21 +134,19 @@ The chart sets `GOMEMLIMIT` to 80% of `resources.limits.memory`; override it wit
 
 ## Compaction
 
-Each commit writes about one data file per active partition, so a 60 s interval creates about 1,440 files per partition per day for each replica. S3 Tables compacts these for you, and Glue does once its compaction optimizer is enabled. A self-managed REST catalog needs a scheduled rewrite, which the optional CronJob runs with the same catalog settings and credentials as the sink:
+Each commit writes about one data file per active partition, so a 60 s interval creates about 1,440 files per partition per day for each replica. S3 Tables compacts these for you, and Glue does once its compaction optimizer is enabled. A self-managed REST catalog needs a scheduled rewrite, which the optional CronJob runs:
 
 ```yaml
 compaction:
   enabled: true
   schedule: "17 */6 * * *"
-  image: YOUR_COMPACTION_IMAGE
-  command: ["/opt/compact"]
-  args: []
-  resources:
-    requests: {cpu: 500m, memory: 1Gi}
-    limits: {memory: 1Gi}
 ```
 
-The job receives `ICEBERG_CATALOG_TYPE`, `ICEBERG_CATALOG_URI`, `ICEBERG_WAREHOUSE`, `ICEBERG_NAMESPACE`, `ICEBERG_TABLE`, `ICEBERG_CATALOG_PROPERTIES`, the storage credentials, and a `GOMEMLIMIT` at 80% of its memory limit. Point `image` and `command` at the engine you use for Iceberg `rewrite_data_files`. The memory limit must be at least 1Gi: an iceberg-go bin-pack of 4,032 small files peaked at 653 MiB of heap in testing. Set `compaction.podSecurityContext` and `compaction.securityContext` when the engine image needs another user or a writable root filesystem.
+By default the job runs `iceberg-sink compact` from the sink image with the sink's catalog settings and credentials. It bin-packs each partition's small files into files near `compaction.targetFileBytes` (128 MiB), skipping partitions with fewer than `compaction.minInputFiles` (5) small files. Each group commits separately, so the job runs safely while the sink writes; a group that loses a commit race is picked up by the next run, and the job fails when any group was not committed.
+
+The memory limit must be at least 1Gi: bin-packing 4,032 small files at the default target peaked at 653 MiB of heap in testing. The chart sets `GOMEMLIMIT` to 80% of the job's limit. Lower `targetFileBytes` to lower the peak.
+
+To use another engine, such as Spark `rewrite_data_files`, set `compaction.image`, `compaction.command` and `compaction.args`. The job still receives the `ICEBERG_*` settings and storage credentials. Set `compaction.podSecurityContext` and `compaction.securityContext` when that image needs another user or a writable root filesystem.
 
 ## Metrics
 

@@ -103,16 +103,20 @@ metrics:
     labels: {}
 
 # Scheduled compaction for self-managed REST catalogs. S3 Tables and Glue compact tables
-# themselves. The job receives the same ICEBERG_* settings and credentials as the sink.
+# themselves. By default the job runs the sink image's compact mode, which bin-packs each
+# partition's small files with the same ICEBERG_* settings and credentials as the sink.
 compaction:
   enabled: false
   schedule: "17 */6 * * *"
-  # Image of the compaction engine. Empty uses the sink image.
+  # Output data file size. Memory use grows with it.
+  targetFileBytes: 134217728
+  # Fewest small files in a partition worth rewriting.
+  minInputFiles: 5
+  # Empty uses the sink image. To use another engine (for example Spark
+  # rewrite_data_files), set image, command and args.
   image: ""
-  # Command and arguments that rewrite small data files (for example a Spark
-  # rewrite_data_files call). Required when enabled.
   command: []
-  args: []
+  args: ["compact"]
   env: []
   concurrencyPolicy: Forbid
   activeDeadlineSeconds: 3600
@@ -123,7 +127,7 @@ compaction:
   # filesystem) when the engine image needs another user or a writable filesystem.
   podSecurityContext: {}
   securityContext: {}
-  # Compaction holds whole files in memory: the memory limit must be at least 1Gi.
+  # Compaction holds a group of files in memory: the memory limit must be at least 1Gi.
   resources:
     requests:
       cpu: 500m
