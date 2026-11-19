@@ -34,8 +34,9 @@ iceberg:
     maxPendingBytes: 67108864
     # Written to the table as commit.retry.num-retries.
     retries: 10
-  # Snapshot expiry and old-metadata cleanup in the sink: auto (on for rest, off for glue and
-  # s3tables, which maintain tables themselves), on or off.
+  # Snapshot expiry and old-metadata cleanup in the sink: auto (on for rest and glue, off for
+  # s3tables, which maintains tables itself and denies client deletes), on or off. Use off for
+  # a Glue table whose snapshot retention optimizer is enabled.
   maintenance: auto
 
 # Region for s3tables and glue.
@@ -102,8 +103,8 @@ metrics:
     interval: 30s
     labels: {}
 
-# Scheduled compaction for self-managed REST catalogs. S3 Tables and Glue compact tables
-# themselves. By default the job runs the sink image's compact mode, which bin-packs each
+# Scheduled compaction for REST catalogs, and for Glue tables without the compaction
+# optimizer. S3 Tables compacts tables itself. By default the job runs the sink image's compact mode, which bin-packs each
 # partition's small files with the same ICEBERG_* settings and credentials as the sink.
 compaction:
   enabled: false

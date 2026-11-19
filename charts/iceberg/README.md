@@ -55,7 +55,7 @@ serviceAccount:
     eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/byoc-iceberg
 ```
 
-The role needs Glue database and table read, create and update permissions plus S3 read and write on the warehouse prefix. After the sink creates the table, [enable compaction](https://docs.aws.amazon.com/glue/latest/dg/enable-compaction.html) and [snapshot retention](https://docs.aws.amazon.com/glue/latest/dg/enable-snapshot-retention.html) optimizers on it with an optimizer IAM role. Glue turns both off for new tables, and maintenance in the sink stays off by default for Glue, so without them small files and snapshots accumulate.
+The role needs Glue database and table read, create and update permissions plus S3 read and write on the warehouse prefix. Glue turns its table optimizers off for new tables, so the sink expires snapshots and cleans old metadata itself (`maintenance: auto`). The sink does not compact: after it creates the table, [enable the compaction optimizer](https://docs.aws.amazon.com/glue/latest/dg/enable-compaction.html) with an optimizer IAM role, or run the [compaction CronJob](#compaction). If you also enable the [snapshot retention optimizer](https://docs.aws.amazon.com/glue/latest/dg/enable-snapshot-retention.html), set `iceberg.maintenance: off`.
 
 ### REST catalog
 
@@ -126,7 +126,7 @@ The NetworkPolicy admits OTLP from the release namespace and `networkPolicy.allo
 | `iceberg.commit.maxBatchBytes` | `8388608` | Commit early at this buffered size |
 | `iceberg.commit.maxPendingBytes` | `67108864` | Past this, the sink returns `UNAVAILABLE` and the Forwarder retries |
 | `iceberg.commit.retries` | `10` | Written to the table as `commit.retry.num-retries` |
-| `iceberg.maintenance` | `auto` | Snapshot expiry and metadata cleanup: on for `rest`, off for `glue` and `s3tables` |
+| `iceberg.maintenance` | `auto` | Snapshot expiry and metadata cleanup: on for `rest` and `glue`, off for `s3tables` |
 
 The chart sets `GOMEMLIMIT` to 80% of `resources.limits.memory`; override it with `goMemLimit`. With an 8 MiB batch, a 2,000 RRPair/s stream needs about 60 MiB of heap, so the default 512Mi limit leaves room.
 
@@ -134,7 +134,7 @@ The chart sets `GOMEMLIMIT` to 80% of `resources.limits.memory`; override it wit
 
 ## Compaction
 
-Each commit writes about one data file per active partition, so a 60 s interval creates about 1,440 files per partition per day for each replica. S3 Tables compacts these for you, and Glue does once its compaction optimizer is enabled. A self-managed REST catalog needs a scheduled rewrite, which the optional CronJob runs:
+Each commit writes about one data file per active partition, so a 60 s interval creates about 1,440 files per partition per day for each replica. S3 Tables compacts these for you, and Glue does once its compaction optimizer is enabled. A REST catalog, or a Glue table without that optimizer, needs a scheduled rewrite, which the optional CronJob runs:
 
 ```yaml
 compaction:
