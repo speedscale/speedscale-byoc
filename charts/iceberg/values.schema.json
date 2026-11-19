@@ -1,0 +1,182 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["image", "replicaCount", "iceberg", "awsRegion", "serviceAccount", "auth", "resources", "networkPolicy", "metrics", "compaction"],
+  "definitions": {
+    "memory": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?(Ki|Mi|Gi|Ti|k|K|M|G|T)?$"},
+    "envList": {"type": "array", "items": {"type": "object", "required": ["name"]}},
+    "stringMap": {"type": "object", "additionalProperties": {"type": "string"}}
+  },
+  "properties": {
+    "global": {"type": "object"},
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "tag", "digest", "pullPolicy"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string"},
+        "digest": {"type": "string", "pattern": "^(sha256:[a-f0-9]{64})?$"},
+        "pullPolicy": {"enum": ["", "Always", "IfNotPresent", "Never"]}
+      },
+      "anyOf": [
+        {"properties": {"tag": {"minLength": 1}}},
+        {"properties": {"digest": {"minLength": 1}}}
+      ]
+    },
+    "replicaCount": {"type": "integer", "minimum": 0},
+    "iceberg": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog", "namespace", "table", "commit", "maintenance"],
+      "properties": {
+        "catalog": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "uri", "warehouse", "properties", "propertiesSecret"],
+          "properties": {
+            "type": {"enum": ["rest", "glue", "s3tables"]},
+            "uri": {"type": "string"},
+            "warehouse": {"type": "string"},
+            "properties": {"$ref": "#/definitions/stringMap"},
+            "propertiesSecret": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "key"],
+              "properties": {
+                "name": {"type": "string"},
+                "key": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"type": {"const": "rest"}}},
+              "then": {"properties": {"uri": {"minLength": 1}}}
+            },
+            {
+              "if": {"properties": {"type": {"const": "s3tables"}}},
+              "then": {"properties": {"warehouse": {"pattern": "^arn:"}}}
+            }
+          ]
+        },
+        "namespace": {"type": "string", "minLength": 1},
+        "table": {"type": "string", "minLength": 1},
+        "commit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["interval", "maxBatchBytes", "maxPendingBytes", "retries"],
+          "properties": {
+            "interval": {"type": "string", "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$"},
+            "maxBatchBytes": {"type": "integer", "minimum": 1},
+            "maxPendingBytes": {"type": "integer", "minimum": 1},
+            "retries": {"type": "integer", "minimum": 0}
+          }
+        },
+        "maintenance": {"enum": ["auto", "on", "off"]}
+      }
+    },
+    "awsRegion": {"type": "string", "minLength": 1},
+    "logLevel": {"enum": ["debug", "info", "warn", "error"]},
+    "goMemLimit": {"type": "string"},
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["create", "name", "annotations"],
+      "properties": {
+        "create": {"type": "boolean"},
+        "name": {"type": "string"},
+        "annotations": {"$ref": "#/definitions/stringMap"}
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "secretName", "googleCredentialsKey"],
+      "properties": {
+        "mode": {"enum": ["ambient", "secret"]},
+        "secretName": {"type": "string"},
+        "googleCredentialsKey": {"type": "string"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"const": "secret"}}},
+          "then": {"properties": {"secretName": {"minLength": 1}}}
+        },
+        {
+          "if": {"properties": {"googleCredentialsKey": {"minLength": 1}}},
+          "then": {"properties": {"mode": {"const": "secret"}}}
+        }
+      ]
+    },
+    "azureWorkloadIdentity": {"type": "boolean"},
+    "extraEnv": {"$ref": "#/definitions/envList"},
+    "podLabels": {"$ref": "#/definitions/stringMap"},
+    "podAnnotations": {"$ref": "#/definitions/stringMap"},
+    "nodeSelector": {"$ref": "#/definitions/stringMap"},
+    "tolerations": {"type": "array"},
+    "affinity": {"type": "object"},
+    "preStopSleepSeconds": {"type": "integer", "minimum": 0},
+    "terminationGracePeriodSeconds": {"type": "integer", "minimum": 0},
+    "resources": {"type": "object"},
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "allowedNamespaces", "metricsNamespaces"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "allowedNamespaces": {"type": "array", "items": {"type": "string"}},
+        "metricsNamespaces": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["serviceMonitor"],
+      "properties": {
+        "serviceMonitor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "interval", "labels"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "interval": {"type": "string"},
+            "labels": {"$ref": "#/definitions/stringMap"}
+          }
+        }
+      }
+    },
+    "compaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "schedule", "image", "command", "args", "env", "resources"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "schedule": {"type": "string", "minLength": 1},
+        "image": {"type": "string"},
+        "command": {"type": "array", "items": {"type": "string"}},
+        "args": {"type": "array", "items": {"type": "string"}},
+        "env": {"$ref": "#/definitions/envList"},
+        "concurrencyPolicy": {"enum": ["Allow", "Forbid", "Replace"]},
+        "activeDeadlineSeconds": {"type": "integer", "minimum": 1},
+        "backoffLimit": {"type": "integer", "minimum": 0},
+        "successfulJobsHistoryLimit": {"type": "integer", "minimum": 0},
+        "failedJobsHistoryLimit": {"type": "integer", "minimum": 0},
+        "podSecurityContext": {"type": "object"},
+        "securityContext": {"type": "object"},
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {"memory": {"$ref": "#/definitions/memory"}}
+            }
+          }
+        }
+      },
+      "if": {"properties": {"enabled": {"const": true}}},
+      "then": {"properties": {"command": {"minItems": 1}}}
+    }
+  }
+}

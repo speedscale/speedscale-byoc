@@ -1,0 +1,113 @@
+# Local demo only: an S3-compatible object store and the Apache Iceberg REST catalog fixture
+# in the iceberg namespace, with throwaway credentials. Do not use it in production.
+#
+#   kubectl create namespace iceberg
+#   kubectl -n iceberg apply -f examples/local-rest-catalog.yaml
+#   kubectl -n iceberg wait --for=condition=complete job/create-warehouse-bucket --timeout=180s
+apiVersion: v1
+kind: Secret
+metadata:
+  name: object-store
+stringData:
+  access-key: admin
+  secret-key: password
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: object-store
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: object-store}
+  template:
+    metadata:
+      labels: {app: object-store}
+    spec:
+      containers:
+        - name: rustfs
+          image: rustfs/rustfs:1.0.0
+          args: ["/data"]
+          env:
+            - name: RUSTFS_ACCESS_KEY
+              valueFrom: {secretKeyRef: {name: object-store, key: access-key}}
+            - name: RUSTFS_SECRET_KEY
+              valueFrom: {secretKeyRef: {name: object-store, key: secret-key}}
+          ports:
+            - {name: s3, containerPort: 9000}
+          readinessProbe:
+            httpGet: {path: /health/ready, port: s3}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: object-store
+spec:
+  selector: {app: object-store}
+  ports:
+    - {name: s3, port: 9000, targetPort: s3}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-warehouse-bucket
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: aws
+          image: amazon/aws-cli:2.36.44
+          command: ["/bin/sh", "-ec", "aws s3api head-bucket --bucket warehouse 2>/dev/null || aws s3api create-bucket --bucket warehouse"]
+          env:
+            - {name: AWS_DEFAULT_REGION, value: us-east-1}
+            - {name: AWS_ENDPOINT_URL, value: "http://object-store:9000"}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: {secretKeyRef: {name: object-store, key: access-key}}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: {secretKeyRef: {name: object-store, key: secret-key}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iceberg-rest
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: iceberg-rest}
+  template:
+    metadata:
+      labels: {app: iceberg-rest}
+    spec:
+      containers:
+        - name: rest
+          image: apache/iceberg-rest-fixture:1.10.1
+          env:
+            - {name: AWS_REGION, value: us-east-1}
+            - {name: CATALOG_WAREHOUSE, value: "s3://warehouse/"}
+            - {name: CATALOG_IO__IMPL, value: org.apache.iceberg.aws.s3.S3FileIO}
+            - {name: CATALOG_S3_ENDPOINT, value: "http://object-store.iceberg.svc.cluster.local:9000"}
+            - {name: CATALOG_S3_PATH__STYLE__ACCESS, value: "true"}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: {secretKeyRef: {name: object-store, key: access-key}}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: {secretKeyRef: {name: object-store, key: secret-key}}
+          ports:
+            - {name: http, containerPort: 8181}
+          readinessProbe:
+            httpGet: {path: /v1/config, port: http}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iceberg-rest
+spec:
+  selector: {app: iceberg-rest}
+  ports:
+    - {name: http, port: 8181, targetPort: http}

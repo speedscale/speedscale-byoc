@@ -1,0 +1,17 @@
+apiVersion: v2
+name: iceberg
+description: Speedscale BYOC sink that streams captured traffic into an Apache Iceberg table.
+type: application
+version: 1.0.0
+appVersion: "latest"
+keywords: [speedscale, byoc, iceberg, lakehouse, s3-tables, glue, opentelemetry]
+home: https://github.com/speedscale/speedscale-byoc
+maintainers:
+  - name: Speedscale
+    email: support@speedscale.com
+annotations:
+  artifacthub.io/category: storage
+  artifacthub.io/license: Apache-2.0
+sources:
+  - https://github.com/speedscale/speedscale-byoc/tree/main/charts/iceberg
+  - https://gitlab.com/speedscale/speedscale/-/tree/master/iceberg-sink

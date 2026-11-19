@@ -1,0 +1,92 @@
+{{- if .Values.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "iceberg.serviceAccount" . }}
+  annotations: {{ toYaml .Values.serviceAccount.annotations | nindent 4 }}
+---
+{{- end }}
+{{- $goMemLimit := include "iceberg.goMemLimit" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "iceberg.name" . }}
+  labels:
+    app: {{ include "iceberg.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "iceberg.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "iceberg.name" . }}
+        {{- with include "iceberg.podLabels" . | trim }}{{ . | nindent 8 }}{{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "iceberg.serviceAccount" . }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      securityContext: {{- include "iceberg.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: sink
+          image: {{ include "iceberg.image" . }}
+          {{- with .Values.image.pullPolicy }}
+          imagePullPolicy: {{ . }}
+          {{- end }}
+          envFrom: {{- include "iceberg.envFrom" . | nindent 12 }}
+          env:
+            {{- if $goMemLimit }}
+            - name: GOMEMLIMIT
+              value: {{ $goMemLimit | quote }}
+            {{- end }}
+            {{- with include "iceberg.env" . | trim }}{{ . | nindent 12 }}{{- end }}
+          securityContext: {{- include "iceberg.containerSecurityContext" . | nindent 12 }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          ports:
+            - {name: grpc, containerPort: 4317}
+            - {name: http, containerPort: 8080}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 10
+          {{- if .Values.preStopSleepSeconds }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sleep", {{ .Values.preStopSleepSeconds | quote }}]
+          {{- end }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            {{- with include "iceberg.credentialVolumeMounts" . | trim }}{{ . | nindent 12 }}{{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- with include "iceberg.credentialVolumes" . | trim }}{{ . | nindent 8 }}{{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "iceberg.name" . }}
+  labels:
+    app: {{ include "iceberg.name" . }}
+spec:
+  selector:
+    app: {{ include "iceberg.name" . }}
+  ports:
+    - {name: grpc, port: 4317, targetPort: grpc, appProtocol: grpc}
+    - {name: http, port: 8080, targetPort: http}

@@ -1,0 +1,23 @@
+{{- $catalog := .Values.iceberg.catalog -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "iceberg.name" . }}
+data:
+  ICEBERG_CATALOG_TYPE: {{ $catalog.type | quote }}
+  ICEBERG_CATALOG_URI: {{ $catalog.uri | quote }}
+  ICEBERG_WAREHOUSE: {{ $catalog.warehouse | quote }}
+  ICEBERG_NAMESPACE: {{ .Values.iceberg.namespace | quote }}
+  ICEBERG_TABLE: {{ .Values.iceberg.table | quote }}
+{{- if and $catalog.properties (not $catalog.propertiesSecret.name) }}
+  ICEBERG_CATALOG_PROPERTIES: {{ toJson $catalog.properties | quote }}
+{{- end }}
+  ICEBERG_COMMIT_INTERVAL: {{ .Values.iceberg.commit.interval | quote }}
+  ICEBERG_MAX_BATCH_BYTES: {{ .Values.iceberg.commit.maxBatchBytes | int64 | quote }}
+  ICEBERG_MAX_PENDING_BYTES: {{ .Values.iceberg.commit.maxPendingBytes | int64 | quote }}
+  ICEBERG_COMMIT_RETRIES: {{ .Values.iceberg.commit.retries | int64 | quote }}
+  ICEBERG_MAINTENANCE: {{ .Values.iceberg.maintenance | quote }}
+  AWS_REGION: {{ .Values.awsRegion | quote }}
+  LOG_LEVEL: {{ .Values.logLevel | quote }}
+  OTLP_GRPC_ADDR: ":4317"
+  HTTP_ADDR: ":8080"
