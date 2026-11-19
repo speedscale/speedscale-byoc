@@ -755,6 +755,36 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/grafana-1.0.0/grafana-1.0.0.tgz
     version: 1.0.0
+  iceberg:
+  - annotations:
+      artifacthub.io/category: storage
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: latest
+    created: "2026-11-19T21:25:28.725284428Z"
+    description: Speedscale BYOC sink that streams captured traffic into an Apache
+      Iceberg table.
+    digest: a8f3c98ce86ad91944350337cf9ec65a369ba3cbbbf60f64d321c1bb7f2fb52a
+    home: https://github.com/speedscale/speedscale-byoc
+    keywords:
+    - speedscale
+    - byoc
+    - iceberg
+    - lakehouse
+    - s3-tables
+    - glue
+    - opentelemetry
+    maintainers:
+    - email: support@speedscale.com
+      name: Speedscale
+    name: iceberg
+    sources:
+    - https://github.com/speedscale/speedscale-byoc/tree/main/charts/iceberg
+    - https://gitlab.com/speedscale/speedscale/-/tree/master/iceberg-sink
+    type: application
+    urls:
+    - https://github.com/speedscale/speedscale-byoc/releases/download/iceberg-1.0.0/iceberg-1.0.0.tgz
+    version: 1.0.0
   kafka:
   - apiVersion: v2
     appVersion: 0.160.0
@@ -986,4 +1016,4 @@ entries:
     urls:
     - https://github.com/speedscale/speedscale-byoc/releases/download/splunk-1.0.0/splunk-1.0.0.tgz
     version: 1.0.0
-generated: "2026-10-12T11:56:46.112789333Z"
+generated: "2026-11-19T21:25:28.725372654Z"
